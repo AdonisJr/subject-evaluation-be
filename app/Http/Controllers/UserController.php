@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class UserController extends Controller
 {
@@ -14,8 +16,15 @@ class UserController extends Controller
      */
     public function index()
     {
-        error_log('UserController index method called');
-        return response()->json(User::all(), 200);
+        try {
+            $users = User::all();
+            return response()->json($users, 200);
+        } catch (Throwable $e) {
+            Log::error('Error fetching users: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['message' => 'Internal Server Error'], 500);
+        }
     }
 
     /**
@@ -23,22 +32,38 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|string|email|unique:users',
-            'password' => 'required|string|min:6',
-        ]);
+        try {
+            $validated = $request->validate([
+                'first_name' => 'required|string|max:255',
+                'last_name'  => 'required|string|max:255',
+                'email'      => 'required|string|email|unique:users',
+                'password'   => 'required|string|min:3',
+            ]);
 
-        $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'password' => Hash::make($validated['password']),
-        ]);
+            $user = User::create([
+                'first_name' => $validated['first_name'],
+                'last_name'  => $validated['last_name'],
+                'email'      => $validated['email'],
+                'password'   => Hash::make($validated['password']),
+            ]);
 
-        return response()->json([
-            'message' => 'User created successfully',
-            'user'    => $user
-        ], 201);
+            return response()->json([
+                'message' => 'User created successfully',
+                'user'    => $user,
+            ], 201);
+        } catch (ValidationException $e) {
+            // Return validation error messages
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors'  => $e->errors(),
+            ], 422);
+        } catch (Throwable $e) {
+            Log::error('Error creating user: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all(),
+            ]);
+            return response()->json(['message' => 'Internal Server Error'], 500);
+        }
     }
 
     /**
@@ -46,7 +71,15 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        return response()->json($user, 200);
+        try {
+            return response()->json($user, 200);
+        } catch (Throwable $e) {
+            Log::error('Error showing user: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $user->id ?? null,
+            ]);
+            return response()->json(['message' => 'Internal Server Error'], 500);
+        }
     }
 
     /**
@@ -54,22 +87,39 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
-        $validated = $request->validate([
-            'name'     => 'sometimes|string|max:255',
-            'email'    => 'sometimes|string|email|unique:users,email,' . $user->id,
-            'password' => 'sometimes|string|min:6',
-        ]);
+        try {
+            $validated = $request->validate([
+                'first_name' => 'required|string|max:255',
+                'last_name'  => 'required|string|max:255',
+                'role'       => 'required|in:admin,user',
+                'address'    => 'nullable|string|max:255',
+                'email'      => 'sometimes|string|email|unique:users,email,' . $user->id,
+                'password'   => 'sometimes|string|min:6',
+            ]);
 
-        if (isset($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
+            if (isset($validated['password'])) {
+                $validated['password'] = Hash::make($validated['password']);
+            }
+
+            $user->update($validated);
+
+            return response()->json([
+                'message' => 'User updated successfully',
+                'user'    => $user,
+            ], 200);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors'  => $e->errors(),
+            ], 422);
+        } catch (Throwable $e) {
+            Log::error('Error updating user: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $user->id ?? null,
+                'request' => $request->all(),
+            ]);
+            return response()->json(['message' => 'Internal Server Error'], 500);
         }
-
-        $user->update($validated);
-
-        return response()->json([
-            'message' => 'User updated successfully',
-            'user'    => $user
-        ], 200);
     }
 
     /**
@@ -77,8 +127,15 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
-        $user->delete();
-
-        return response()->json(['message' => 'User deleted successfully'], 200);
+        try {
+            $user->delete();
+            return response()->json(['message' => 'User deleted successfully'], 200);
+        } catch (Throwable $e) {
+            Log::error('Error deleting user: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $user->id ?? null,
+            ]);
+            return response()->json(['message' => 'Internal Server Error'], 500);
+        }
     }
 }
