@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); // who uploaded
             $table->string('file_path'); // storage path of uploaded TOR
+            $table->string('public_id'); // storage path of uploaded TOR
             $table->enum('status', ['submitted', 'processing','advising', 'done', 'rejected'])->default('submitted');
             $table->text('remarks')->nullable();
             $table->timestamps();

@@ -12,6 +12,7 @@ class UploadedTor extends Model
     protected $fillable = [
         'user_id',
         'file_path',
+        'public_id',
         'status',
         'remarks',
     ];
