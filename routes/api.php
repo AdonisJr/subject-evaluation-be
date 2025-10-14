@@ -9,6 +9,7 @@ use App\Http\Controllers\CourseController;
 use App\Http\Controllers\CurriculumController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TesseractOcrController;
+use App\Http\Controllers\TorGradeController;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 // Route::get('/user', function (Request $request) {
@@ -33,15 +34,21 @@ Route::get('/check-cloudinary', function () {
 });
 // Public route
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register']);
 // Protected routes
 Route::middleware('auth-ocr')->group(function () {
 
     Route::apiResource('/users', UserController::class);
+    Route::get('/me', [UserController::class, 'getMyInfo']);
     Route::apiResource('/tor', UploadedTorController::class);
+    Route::get('/fetchMyTors', [UploadedTorController::class, 'fetchMyTors']);
 
     Route::apiResource('courses', CourseController::class);
     Route::apiResource('curriculums', CurriculumController::class);
     Route::apiResource('subjects', SubjectController::class);
     // Route::get('/dashboard', [AuthController::class, 'dashboard']);
+
     Route::post('/process-tor/{id}/{curriculum_id}', [TesseractOcrController::class, 'analyzeTor']);
+    Route::apiResource('subjects', SubjectController::class);
+    Route::apiResource('grades', TorGradeController::class);
 });

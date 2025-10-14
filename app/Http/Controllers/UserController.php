@@ -138,4 +138,39 @@ class UserController extends Controller
             return response()->json(['message' => 'Internal Server Error'], 500);
         }
     }
+
+    public function getMyInfo(Request $request)
+    {
+        try {
+            // ✅ Check if user is authenticated via Sanctum
+            if (!auth('sanctum')->check()) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
+
+            $user = auth('sanctum')->user();
+
+            // ✅ Properly load "otherInfo" and its related "course"
+            $user->load('otherInfo.course');
+
+            return response()->json([
+                'message' => 'Authenticated user retrieved successfully',
+                'user' => [
+                    'id' => $user->id,
+                    'first_name' => $user->first_name,
+                    'last_name' => $user->last_name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'created_at' => $user->created_at,
+                    'updated_at' => $user->updated_at,
+                ],
+                'other_info' => $user->otherInfo, // includes course automatically
+            ], 200);
+        } catch (Throwable $e) {
+            Log::error('Error fetching authenticated user info: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json(['message' => 'Internal Server Error'], 500);
+        }
+    }
 }

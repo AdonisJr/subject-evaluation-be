@@ -155,4 +155,27 @@ class UploadedTorController extends Controller
             return response()->json(['message' => 'Internal Server Error'], 500);
         }
     }
+
+    /**
+     * Fetch all uploaded TORs for the authenticated user.
+     */
+    public function fetchMyTors()
+    {
+        $user = auth('sanctum')->user();
+        // if (!$user) {
+        //     return response()->json(['message' => 'Unauthenticated.'], 401);
+        // }
+
+        try {
+            $tors = UploadedTor::with('user')
+                ->where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json($tors, 200);
+        } catch (\Throwable $e) {
+            Log::error("Error fetching TORs for user {$user->id}: " . $e->getMessage());
+            return response()->json(['message' => 'Internal Server Error'], 500);
+        }
+    }
 }
