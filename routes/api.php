@@ -10,6 +10,7 @@ use App\Http\Controllers\CurriculumController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TesseractOcrController;
 use App\Http\Controllers\TorGradeController;
+use App\Http\Controllers\UserOtherInfoController;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 // Route::get('/user', function (Request $request) {
@@ -40,6 +41,8 @@ Route::middleware('auth-ocr')->group(function () {
 
     Route::apiResource('/users', UserController::class);
     Route::get('/me', [UserController::class, 'getMyInfo']);
+    
+    Route::post('/tor/upload/{curriculum_id}', [UploadedTorController::class, 'storeWithCurriculum']);
     Route::apiResource('/tor', UploadedTorController::class);
     Route::get('/fetchMyTors', [UploadedTorController::class, 'fetchMyTors']);
 
@@ -51,4 +54,7 @@ Route::middleware('auth-ocr')->group(function () {
     Route::post('/process-tor/{id}/{curriculum_id}', [TesseractOcrController::class, 'analyzeTor']);
     Route::apiResource('subjects', SubjectController::class);
     Route::apiResource('grades', TorGradeController::class);
+
+    Route::get('/users/other-info', [UserOtherInfoController::class, 'show']);
+    Route::post('/users/other-info', [UserOtherInfoController::class, 'storeOrUpdate']);
 });

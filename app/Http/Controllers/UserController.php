@@ -154,16 +154,7 @@ class UserController extends Controller
 
             return response()->json([
                 'message' => 'Authenticated user retrieved successfully',
-                'user' => [
-                    'id' => $user->id,
-                    'first_name' => $user->first_name,
-                    'last_name' => $user->last_name,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                    'created_at' => $user->created_at,
-                    'updated_at' => $user->updated_at,
-                ],
-                'other_info' => $user->otherInfo, // includes course automatically
+                'user' => $user
             ], 200);
         } catch (Throwable $e) {
             Log::error('Error fetching authenticated user info: ' . $e->getMessage(), [
