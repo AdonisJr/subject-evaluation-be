@@ -15,13 +15,15 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validated = $request->validate([
-            'name'     => 'required|string|max:255',
+            'first_name'     => 'required|string|max:255',
+            'last_name'     => 'required|string|max:255',
             'email'    => 'required|string|email|unique:users',
-            'password' => 'required|string|min:6',
+            'password' => 'required|string|min:3',
         ]);
 
         $user = User::create([
-            'name'     => $validated['name'],
+            'first_name'     => $validated['first_name'],
+            'last_name'     => $validated['last_name'],
             'email'    => $validated['email'],
             'password' => Hash::make($validated['password']),
         ]);
@@ -50,6 +52,10 @@ class AuthController extends Controller
             return response()->json(['error' => 'Invalid credentials'], 401);
         }
 
+
+        // 🔗 Load otherInfo and course relations
+        $user->load('otherInfo.course');
+
         $token = $user->createToken('api_token')->plainTextToken;
 
         return response()->json([
@@ -68,4 +74,3 @@ class AuthController extends Controller
         return response()->json(['message' => 'Logged out successfully']);
     }
 }
- 

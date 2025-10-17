@@ -27,6 +27,24 @@ class User extends Authenticatable
         'password',
     ];
 
+    public function otherInfo()
+    {
+        return $this->hasOne(UserOtherInfo::class);
+    }
+
+    public function course()
+    {
+        return $this->hasOneThrough(
+            Course::class,
+            UserOtherInfo::class,
+            'user_id', // Foreign key on user_other_infos
+            'id',      // Foreign key on courses
+            'id',      // Local key on users
+            'course_id' // Local key on user_other_infos
+        );
+    }
+
+
     /**
      * The attributes that should be hidden for serialization.
      *
