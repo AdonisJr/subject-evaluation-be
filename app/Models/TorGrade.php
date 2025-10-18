@@ -11,12 +11,14 @@ class TorGrade extends Model
 
     protected $fillable = [
         'tor_id',
+        'user_id',
+        'extracted_code',
         'subject_id',
-        'credited_code',
+        'subject_code',
         'title',
-        'grade',
         'credits',
-        'user_id'
+        'grade',
+        'is_credited',
     ];
 
     // Relationships

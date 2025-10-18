@@ -11,13 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('curriculums', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('course_id')->constrained()->onDelete('cascade');
-            $table->year('name')->nullable();
-            $table->year('year_start');
-            $table->year('year_end');
-            $table->boolean('is_active')->default(true);
+        Schema::create('notifications', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->string('type');
+            $table->morphs('notifiable');
+            $table->text('data');
+            $table->timestamp('read_at')->nullable();
             $table->timestamps();
         });
     }
@@ -27,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('curriculums');
+        Schema::dropIfExists('notifications');
     }
 };

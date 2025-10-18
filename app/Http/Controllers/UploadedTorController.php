@@ -18,7 +18,7 @@ class UploadedTorController extends Controller
     public function index()
     {
         try {
-            $tors = UploadedTor::with('user')
+            $tors = UploadedTor::with('user', 'curriculum.course', 'torGrades', 'advising')
                 ->orderBy('created_at', 'desc')
                 ->get();
 
@@ -251,6 +251,7 @@ class UploadedTorController extends Controller
             // ✅ Save to DB as 'processing'
             $uploadedTor = \App\Models\UploadedTor::create([
                 'user_id' => $user->id,
+                'curriculum_id' => $curriculum_id,
                 'file_path' => $secureUrl,
                 'public_id' => $publicId,
                 'file_type' => $resourceType

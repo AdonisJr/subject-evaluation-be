@@ -13,11 +13,22 @@ return new class extends Migration
     {
         Schema::create('uploaded_tors', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // who uploaded
-            $table->string('file_path'); // storage path of uploaded TOR
-            $table->string('public_id'); // storage path of uploaded TOR
-            $table->enum('status', ['submitted', 'pending', 'analyzed', 'failed', 'processing','advising', 'done', 'rejected'])->default('submitted');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('file_path');
+            $table->string('public_id');
+            $table->enum('status', [
+                'submitted',
+                'pending',
+                'analyzed',
+                'failed',
+                'approved',
+                'processing',
+                'advising',
+                'done',
+                'rejected'
+            ])->default('submitted');
             $table->text('remarks')->nullable();
+            $table->float('percent_grade')->nullable();
             $table->timestamps();
         });
     }

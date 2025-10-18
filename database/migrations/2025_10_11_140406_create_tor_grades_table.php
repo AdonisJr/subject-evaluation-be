@@ -16,10 +16,13 @@ return new class extends Migration
             $table->foreignId('tor_id')->constrained('uploaded_tors')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('subject_id')->nullable()->constrained('subjects')->onDelete('set null');
-            $table->string('credited_code'); // Original code from OCR / TOR
-            $table->string('title'); // Subject name
-            $table->string('grade')->nullable(); // Grade from TOR
+            $table->string('extracted_code')->nullable(); // Original code from OCR / TOR
+            $table->string('subject_code')->nullable(); // Original code from OCR / TOR
+            $table->string('title')->nullable(); // Subject name
+            $table->float('grade')->nullable(); // Grade from TOR
             $table->decimal('credits', 5, 2)->default(0); // Units
+            $table->boolean('is_credited')->default(false);
+            $table->float('percent_grade')->nullable();
             $table->timestamps();
         });
     }
