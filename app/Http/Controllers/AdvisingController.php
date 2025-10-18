@@ -2,57 +2,101 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Subject;
+use App\Models\Advising;
+use App\Models\UploadedTor;
 use App\Models\TorGrade;
-use App\Models\Prerequisite;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class AdvisingController extends Controller
 {
-    public function getAdvisableSubjects($userId, $curriculumId)
+    /**
+     * Save generated advising subjects
+     */
+    public function store(Request $request)
     {
-        // 1️⃣ Get all subjects for this curriculum
-        $subjects = Subject::where('curriculum_id', $curriculumId)
-            ->with('prerequisites') // eager load prereqs
-            ->get();
-
-        // 2️⃣ Get passed subjects of this student
-        $passedSubjects = TorGrade::where('user_id', $userId)
-            ->where('grade', '<=', 3) // or whatever your passing grade is
-            ->pluck('subject_id')
-            ->toArray();
-
-        // 3️⃣ Determine available subjects
-        $availableSubjects = [];
-
-        foreach ($subjects as $subject) {
-            // Skip if already passed
-            if (in_array($subject->id, $passedSubjects)) {
-                continue;
-            }
-
-            // Get prerequisite subject IDs
-            $prereqIds = $subject->prerequisites->pluck('prerequisite_id')->toArray();
-
-            // If no prerequisites, it’s available
-            if (empty($prereqIds)) {
-                $availableSubjects[] = $subject;
-                continue;
-            }
-
-            // Check if all prerequisites are passed
-            $allPassed = collect($prereqIds)->every(fn($id) => in_array($id, $passedSubjects));
-
-            if ($allPassed) {
-                $availableSubjects[] = $subject;
-            }
-        }
-
-        return response()->json([
-            'user_id' => $userId,
-            'curriculum_id' => $curriculumId,
-            'available_subjects' => $availableSubjects
+        $validated = $request->validate([
+            'tor_id' => 'required|exists:uploaded_tors,id',
+            'advising' => 'required|array',
+            'advising.first_sem' => 'array',
+            'advising.second_sem' => 'array',
+            'ocr_records' => 'required|array'
         ]);
+
+        $user = auth('sanctum')->user();
+        $tor = UploadedTor::findOrFail($validated['tor_id']);
+
+        DB::beginTransaction();
+        try {
+            // ✅ Delete previous advising
+            Advising::where('uploaded_tor_id', $tor->id)->delete();
+
+            // ✅ Save new advising
+            $advisingRecords = [];
+            foreach (['first_sem', 'second_sem'] as $sem) {
+                foreach ($validated['advising'][$sem] ?? [] as $subject) {
+                    $advisingRecords[] = [
+                        'uploaded_tor_id' => $tor->id,
+                        'user_id' => $user->id,
+                        'semester' => $sem,
+                        'year_level' => $subject['year_level'] ?? null,
+                        'subject_code' => $subject['code'] ?? '',
+                        'subject_title' => $subject['title'] ?? '',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+            }
+
+            Advising::insert($advisingRecords);
+
+            // ✅ Save OCR records (use `tor_id`, not `uploaded_tor_id`)
+            TorGrade::where('tor_id', $tor->id)->delete();
+            $ocrRecords = collect($validated['ocr_records'])->map(function ($r) use ($tor, $user) {
+                return [
+                    'tor_id' => $tor->id, // ✅ fixed
+                    'user_id' => $user->id,
+                    'extracted_code' => $r['code'] ?? '',
+                    'subject_id' => $r['subject_id'] ?? null,
+                    'subject_code' => $r['credited_code'] ?? null,
+                    'title' => $r['title'] ?? '',
+                    'credits' => $r['credits'] ?? 0,
+                    'grade' => $r['grade'] ?? '',
+                    'is_credited' => $r['is_credited'] ?? false,
+                    'percent_grade' => $r['percent_grade'] ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            })->toArray();
+
+            TorGrade::insert($ocrRecords);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Advising and OCR records saved successfully.',
+                'advising_count' => count($advisingRecords),
+                'ocr_count' => count($ocrRecords),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to save advising', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Failed to save advising.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+
+    /**
+     * Retrieve advising for a specific TOR
+     */
+    public function show($torId)
+    {
+        $advising = Advising::where('uploaded_tor_id', $torId)
+            ->select('semester', 'subject_code', 'subject_title', 'units')
+            ->get()
+            ->groupBy('semester');
+
+        return response()->json($advising);
     }
 }

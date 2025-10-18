@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Log;
 use App\Models\UploadedTor;
 use App\Models\Subject;
 use App\Models\TorGrade;
+use App\Models\User;
+use App\Notifications\TorSubmittedNotification;
 
 class TesseractOcrController extends Controller
 {
@@ -93,7 +95,7 @@ Return JSON array only in this format:
                 } else {
                     $record['subject_id'] = null;
                     $record['is_credited'] = false;
-                    $record['credited_code'] = $record['code'] ?? '';
+                    $record['credited_code'] = null;
                 }
 
                 // Clean code (remove spaces + uppercase)
@@ -102,30 +104,64 @@ Return JSON array only in this format:
                 return $record;
             });
 
-            // 💾 Step 4. Save results to tor_grades
-            foreach ($records as $rec) {
+            // 💾 Step 4. Save results to tor_grades (with grade conversion + percent grade)
+            $records = $records->map(function ($rec) use ($tor) {
+                $rawGrade = $rec['grade'] ?? null;
+                $convertedGrade = null;
+                $percentGrade = null;
+
+                if (is_numeric($rawGrade)) {
+                    $gradeValue = floatval($rawGrade);
+                    $percentGrade = $gradeValue; // original percent
+
+                    // 🔁 Convert % grade (if >5 means percent)
+                    if ($gradeValue > 5) {
+                        if ($gradeValue >= 97) $convertedGrade = 1.00;
+                        elseif ($gradeValue >= 94) $convertedGrade = 1.25;
+                        elseif ($gradeValue >= 91) $convertedGrade = 1.50;
+                        elseif ($gradeValue >= 88) $convertedGrade = 1.75;
+                        elseif ($gradeValue >= 85) $convertedGrade = 2.00;
+                        elseif ($gradeValue >= 82) $convertedGrade = 2.25;
+                        elseif ($gradeValue >= 79) $convertedGrade = 2.50;
+                        elseif ($gradeValue >= 76) $convertedGrade = 2.75;
+                        elseif ($gradeValue >= 75) $convertedGrade = 3.00;
+                        else $convertedGrade = 5.00;
+                    } else {
+                        $convertedGrade = $gradeValue; // already 1–5 scale
+                    }
+                }
+
+                // Save to database
                 TorGrade::create([
                     'tor_id'        => $tor->id,
                     'user_id'       => $tor->user_id,
                     'subject_id'    => $rec['subject_id'],
                     'credited_code' => $rec['credited_code'],
                     'title'         => $rec['title'] ?? '',
-                    'grade'         => $rec['grade'] ?? null,
+                    'grade'         => $convertedGrade,
+                    'percent_grade' => $percentGrade,
                     'credits'       => $rec['credits'] ?? 0,
                 ]);
-            }
+
+                // Update record for response
+                $rec['grade'] = $convertedGrade;
+                $rec['percent_grade'] = $percentGrade;
+
+                return $rec;
+            });
+
 
             // ----------------------------
-            // 🧮 Step 5. Advising Logic (per your requested format)
+            // 🧮 Step 5. Advising Logic (first_sem & second_sem)
             // ----------------------------
 
-            // Passing subjects (already credited/passed)
+            // Passed subjects based on 1.00–3.00 scale
             $passed = TorGrade::where('user_id', $tor->user_id)
-                ->where('grade', '>=', 75)
+                ->whereBetween('grade', [1.00, 3.00])
                 ->pluck('subject_id')
                 ->toArray();
 
-            // Get curriculum subjects split by semester (include all years, ordered by year)
+            // Get subjects by semester
             $firstSemAll = Subject::where('curriculum_id', $curriculum_id)
                 ->where('semester', 1)
                 ->with('prerequisites')
@@ -140,53 +176,42 @@ Return JSON array only in this format:
                 ->orderBy('id')
                 ->get();
 
-            // helper to compute eligible subjects for one semester list
-            $computeEligible = function ($subjectsList, $passedSubjects, $unitCap = 24) {
+            // helper function for filtering eligible subjects
+            $computeEligible = function ($subjectsList, $passedSubjects, $unitCap = 27) {
                 $eligible = collect();
                 $total = 0;
-                $usedPrereqChains = [];
 
                 foreach ($subjectsList as $subj) {
-                    // skip if already passed/credited
                     if (in_array($subj->id, $passedSubjects)) continue;
 
-                    // get prerequisite ids
                     $prereqIds = $subj->prerequisites->pluck('prerequisite_id')->toArray();
-
-                    // only include if all prerequisites are already passed
                     $allPassed = collect($prereqIds)->every(fn($id) => in_array($id, $passedSubjects));
+
                     if (!$allPassed) continue;
 
-                    // apply "one subject per prerequisite chain" only when prerequisites exist
-                    if (!empty($prereqIds)) {
-                        $chainKey = implode('-', $prereqIds);
-                        if (isset($usedPrereqChains[$chainKey])) {
-                            continue;
-                        }
-                        $usedPrereqChains[$chainKey] = true;
-                    }
-
-                    // respect unit cap for this semester
                     $units = $subj->units ?? 0;
                     if ($total + $units <= $unitCap) {
                         $eligible->push($subj);
                         $total += $units;
-                    } else {
-                        // if adding this subject exceeds the semester cap, skip further subjects
-                        // (we break to keep earliest-by-year order consistent)
-                        break;
-                    }
+                    } else break;
                 }
 
-                // map to minimal array for JSON response
-                $subjectsArray = $eligible->map(fn($s) => [
-                    'id' => $s->id,
-                    'code' => $s->code,
-                    'title' => $s->name,
-                    'units' => $s->units,
-                    'year_level' => $s->year_level,
-                    'semester' => $s->semester
-                ])->values();
+                $subjectsArray = $eligible->map(function ($s) {
+                    $prereq = $s->prerequisites->first();
+                    $prereqSubject = $prereq && $prereq->prerequisite_id
+                        ? Subject::find($prereq->prerequisite_id)
+                        : null;
+
+                    return [
+                        'subject_id' => $s->id, // ✅ Added this
+                        'code' => $s->code,
+                        'title' => $s->name,
+                        'units' => $s->units,
+                        'year_level' => $s->year_level,
+                        'semester' => $s->semester,
+                        'prerequisite' => $prereqSubject?->code ?? null,
+                    ];
+                })->values();
 
                 return [
                     'subjects' => $subjectsArray,
@@ -205,7 +230,22 @@ Return JSON array only in this format:
 
             Log::info("✅ TOR analysis + advising complete for ID {$torId}");
 
-            // 🧾 Step 7. Return Response — as you requested
+            // ✅ Notify all admins that this TOR was successfully submitted
+            $user = $tor->user; // define user based on the uploaded TOR record
+
+            if ($user) {
+                $admins = User::where('role', 'admin')->get();
+
+                foreach ($admins as $admin) {
+                    $admin->notify(new TorSubmittedNotification($tor, $user));
+                }
+
+                Log::info("📨 Notified all admins about TOR ID {$torId} from {$user->email}");
+            } else {
+                Log::warning("⚠️ No user found for TOR ID {$torId} — skipping admin notification");
+            }
+
+            // 🧾 Step 7. Return Response
             return response()->json([
                 'message' => 'TOR analyzed and advising generated successfully.',
                 'tor_id' => $tor->id,
@@ -217,7 +257,6 @@ Return JSON array only in this format:
                     'second_sem_total_units' => $secondResult['total_units'],
                 ]
             ]);
-
         } catch (\Exception $e) {
             Log::error("🔥 OCR error for TOR {$torId}: " . $e->getMessage());
             $tor->update(['status' => 'failed', 'remarks' => $e->getMessage()]);
