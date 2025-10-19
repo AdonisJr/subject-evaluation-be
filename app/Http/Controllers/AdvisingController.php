@@ -40,6 +40,7 @@ class AdvisingController extends Controller
                         'uploaded_tor_id' => $tor->id,
                         'user_id' => $user->id,
                         'semester' => $sem,
+                        'subject_id' => $subject['subject_id'] ?? null,
                         'year_level' => $subject['year_level'] ?? null,
                         'subject_code' => $subject['code'] ?? '',
                         'subject_title' => $subject['title'] ?? '',
@@ -58,8 +59,8 @@ class AdvisingController extends Controller
                     'tor_id' => $tor->id, // ✅ fixed
                     'user_id' => $user->id,
                     'extracted_code' => $r['code'] ?? '',
-                    'subject_id' => $r['subject_id'] ?? null,
-                    'subject_code' => $r['credited_code'] ?? null,
+                    'credited_id' => $r['credited_id'] ?? null,
+                    'credited_code' => $r['credited_code'] ?? null,
                     'title' => $r['title'] ?? '',
                     'credits' => $r['credits'] ?? 0,
                     'grade' => $r['grade'] ?? '',

@@ -21,6 +21,7 @@ class User extends Authenticatable
     protected $fillable = [
         'first_name',
         'last_name',
+        'student_id',
         'role',
         'address',
         'email',
@@ -42,6 +43,11 @@ class User extends Authenticatable
             'id',      // Local key on users
             'course_id' // Local key on user_other_infos
         );
+    }
+
+    public function grades()
+    {
+        return $this->hasMany(Grade::class);
     }
 
 

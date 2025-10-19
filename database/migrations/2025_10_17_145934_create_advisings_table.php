@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('uploaded_tor_id')->constrained('uploaded_tors')->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('subject_id')->constrained('subjects')->onDelete('cascade');
             $table->string('semester'); // first_sem or second_sem
             $table->string('subject_code');
             $table->string('year_level');
