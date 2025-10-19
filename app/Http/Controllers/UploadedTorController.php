@@ -18,7 +18,7 @@ class UploadedTorController extends Controller
     public function index()
     {
         try {
-            $tors = UploadedTor::with('user', 'curriculum.course', 'torGrades', 'advising')
+            $tors = UploadedTor::with('user', 'curriculum.course', 'torGrades', 'advising.subject')
                 ->orderBy('created_at', 'desc')
                 ->get();
 

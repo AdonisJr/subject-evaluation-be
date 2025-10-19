@@ -9,16 +9,20 @@ class TorGrade extends Model
 {
     use HasFactory;
 
+    protected $casts = [
+        'is_credited' => 'boolean',
+        'grade' => 'float',
+        'percent_grade' => 'float',
+        'credits' => 'integer',
+    ];
+
     protected $fillable = [
         'tor_id',
         'user_id',
         'extracted_code',
-        'subject_id',
-        'subject_code',
+        'credited_id',
+        'credited_code',
         'title',
-        'credits',
-        'grade',
-        'is_credited',
     ];
 
     // Relationships
@@ -29,7 +33,7 @@ class TorGrade extends Model
 
     public function subject()
     {
-        return $this->belongsTo(Subject::class, 'subject_id');
+        return $this->belongsTo(Subject::class, 'credited_id');
     }
 
     public function user()

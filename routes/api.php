@@ -11,6 +11,7 @@ use App\Http\Controllers\CurriculumController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TesseractOcrController;
+use App\Http\Controllers\TorApprovalController;
 use App\Http\Controllers\TorGradeController;
 use App\Http\Controllers\UserOtherInfoController;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
@@ -57,8 +58,10 @@ Route::middleware('auth-ocr')->group(function () {
 
     Route::apiResource('courses', CourseController::class);
     // Route::apiResource('curriculums', CurriculumController::class);
-    
+
     Route::apiResource('subjects', SubjectController::class);
+    Route::get('/curriculums/{curriculum_id}/subjects', [SubjectController::class, 'getByCurriculum']);
+
     // Route::get('/dashboard', [AuthController::class, 'dashboard']);
 
     Route::post('/process-tor/{id}/{curriculum_id}', [TesseractOcrController::class, 'analyzeTor']);
@@ -73,9 +76,16 @@ Route::middleware('auth-ocr')->group(function () {
     // advising
     Route::post('/advising', [AdvisingController::class, 'store']);
     Route::get('/advising/{torId}', [AdvisingController::class, 'show']);
+    Route::post('/new-student/advising', [AdvisingController::class, 'store']);
+
+    Route::post('/new-student/advising', [AdvisingController::class, 'newStudentAdvising']);
 
     // notification
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/notifications/unread', [NotificationController::class, 'unread']);
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+
+    // Approver route
+    Route::post('/tors/approve', [TorApprovalController::class, 'approve']);
+    
 });

@@ -11,6 +11,7 @@ use App\Models\Subject;
 use App\Models\TorGrade;
 use App\Models\User;
 use App\Notifications\TorSubmittedNotification;
+use App\Services\RemainingProgressService;
 
 class TesseractOcrController extends Controller
 {
@@ -85,24 +86,31 @@ Return JSON array only in this format:
                 ->keyBy(fn($item) => strtolower(str_replace(' ', '', $item->code)));
 
             $records = collect($jsonData)->map(function ($record) use ($subjects) {
+                // Normalize the OCR subject code (remove spaces, lowercase)
                 $recordCode = strtolower(str_replace(' ', '', $record['code'] ?? ''));
 
-                if (isset($subjects[$recordCode])) {
-                    $subject = $subjects[$recordCode];
-                    $record['subject_id'] = $subject->id;
+                // Find a subject in the curriculum that matches after normalization
+                $subject = $subjects->first(function ($s) use ($recordCode) {
+                    $subjCode = strtolower(str_replace(' ', '', $s->code));
+                    return $recordCode === $subjCode;
+                });
+
+                if ($subject) {
+                    $record['credited_id'] = $subject->id;
                     $record['is_credited'] = true;
                     $record['credited_code'] = $subject->code;
                 } else {
-                    $record['subject_id'] = null;
+                    $record['credited_id'] = null;
                     $record['is_credited'] = false;
                     $record['credited_code'] = null;
                 }
 
-                // Clean code (remove spaces + uppercase)
+                // Normalize for display (keep consistent format)
                 $record['code'] = strtoupper(str_replace(' ', '', $record['code'] ?? ''));
 
                 return $record;
             });
+
 
             // 💾 Step 4. Save results to tor_grades (with grade conversion + percent grade)
             $records = $records->map(function ($rec) use ($tor) {
@@ -133,15 +141,18 @@ Return JSON array only in this format:
 
                 // Save to database
                 TorGrade::create([
-                    'tor_id'        => $tor->id,
-                    'user_id'       => $tor->user_id,
-                    'subject_id'    => $rec['subject_id'],
-                    'credited_code' => $rec['credited_code'],
-                    'title'         => $rec['title'] ?? '',
-                    'grade'         => $convertedGrade,
-                    'percent_grade' => $percentGrade,
-                    'credits'       => $rec['credits'] ?? 0,
+                    'tor_id'         => $tor->id,
+                    'user_id'        => $tor->user_id,
+                    'extracted_code' => $rec['code'] ?? null,
+                    'credited_id'    => $rec['credited_id'] ?? null,
+                    'credited_code'  => $rec['credited_code'] ?? null,
+                    'is_credited'    => $rec['is_credited'] ?? false,
+                    'title'          => $rec['title'] ?? '',
+                    'grade'          => $convertedGrade,
+                    'percent_grade'  => $percentGrade,
+                    'credits'        => $rec['credits'] ?? 0,
                 ]);
+
 
                 // Update record for response
                 $rec['grade'] = $convertedGrade;
@@ -158,7 +169,7 @@ Return JSON array only in this format:
             // Passed subjects based on 1.00–3.00 scale
             $passed = TorGrade::where('user_id', $tor->user_id)
                 ->whereBetween('grade', [1.00, 3.00])
-                ->pluck('subject_id')
+                ->pluck('credited_id')
                 ->toArray();
 
             // Get subjects by semester
@@ -245,6 +256,12 @@ Return JSON array only in this format:
                 Log::warning("⚠️ No user found for TOR ID {$torId} — skipping admin notification");
             }
 
+            // 🧮 Step 7. Compute remaining progress
+            // $remainingProgress = $this->remainingProgressService->compute($tor, $curriculum_id);
+            $remainingProgressService = new RemainingProgressService();
+            // ... later:
+            $remainingProgress = $remainingProgressService->compute($tor, $curriculum_id);
+
             // 🧾 Step 7. Return Response
             return response()->json([
                 'message' => 'TOR analyzed and advising generated successfully.',
@@ -255,7 +272,8 @@ Return JSON array only in this format:
                     'first_sem_total_units' => $firstResult['total_units'],
                     'second_sem' => $secondResult['subjects'],
                     'second_sem_total_units' => $secondResult['total_units'],
-                ]
+                ],
+                'remaining_progress' => $remainingProgress
             ]);
         } catch (\Exception $e) {
             Log::error("🔥 OCR error for TOR {$torId}: " . $e->getMessage());

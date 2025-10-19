@@ -28,8 +28,8 @@ class TorStatusUpdatedNotification extends Notification
     public function toDatabase($notifiable)
     {
         return [
-            'title' => 'TOR Status Updated',
-            'message' => "Your TOR has been {$this->status} by {$this->admin->first_name}.",
+            'title' => 'Request Status Updated',
+            'message' => "Your Request has been {$this->status} by {$this->admin->first_name}.",
             'tor_id' => $this->tor->id,
         ];
     }

@@ -16,6 +16,7 @@ class Advising extends Model
         'year_level',
         'subject_code',
         'subject_title',
+        'subject_id',
     ];
 
     public function tor()
@@ -23,8 +24,24 @@ class Advising extends Model
         return $this->belongsTo(UploadedTor::class, 'uploaded_tor_id');
     }
 
+    public function tor_grade()
+    {
+        return $this->belongsTo(Subject::class, 'subject_id');
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+
+    public function subject()
+    {
+        return $this->belongsTo(Subject::class, 'subject_id');
+    }
+
+    public function grade()
+    {
+        return $this->hasOne(Grade::class);
     }
 }
