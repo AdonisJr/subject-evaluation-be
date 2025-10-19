@@ -76,6 +76,9 @@ Route::middleware('auth-ocr')->group(function () {
     // advising
     Route::post('/advising', [AdvisingController::class, 'store']);
     Route::get('/advising/{torId}', [AdvisingController::class, 'show']);
+    Route::post('/new-student/advising', [AdvisingController::class, 'store']);
+
+    Route::post('/new-student/advising', [AdvisingController::class, 'newStudentAdvising']);
 
     // notification
     Route::get('/notifications', [NotificationController::class, 'index']);
@@ -84,4 +87,5 @@ Route::middleware('auth-ocr')->group(function () {
 
     // Approver route
     Route::post('/tors/approve', [TorApprovalController::class, 'approve']);
+    
 });

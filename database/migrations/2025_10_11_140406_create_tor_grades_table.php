@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('tor_grades', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tor_id')->constrained('uploaded_tors')->onDelete('cascade');
+            $table->foreignId('tor_id')->nullable()->constrained('uploaded_tors')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('credited_id')->nullable()->constrained('subjects')->onDelete('set null');
             $table->string('extracted_code')->nullable(); // Original code from OCR / TOR

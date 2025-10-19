@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('uploaded_tors', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('file_path');
-            $table->string('public_id');
+            $table->string('file_path')->nullable();
+            $table->string('public_id')->nullable();
             $table->enum('status', [
                 'submitted',
                 'pending',

@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Advising;
 use App\Models\UploadedTor;
 use App\Models\TorGrade;
+use App\Models\User;
+use App\Notifications\TorSubmittedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 class AdvisingController extends Controller
 {
@@ -99,5 +102,89 @@ class AdvisingController extends Controller
             ->groupBy('semester');
 
         return response()->json($advising);
+    }
+
+    public function newStudentAdvising(Request $request)
+    {
+        $validated = $request->validate([
+            'curriculum_id' => 'required|exists:curriculums,id',
+        ]);
+
+        $user = auth('sanctum')->user();
+
+        DB::beginTransaction();
+        try {
+            // 🔹 Step 1: Create UploadedTor entry
+            $uploadedTor = \App\Models\UploadedTor::create([
+                'user_id' => $user->id,
+                'curriculum_id' => $validated['curriculum_id'],
+                'file_path' => null,
+                'public_id' => null,
+                'status' => 'submitted',
+            ]);
+
+            // 🔹 Step 2: Get curriculum subjects
+            $subjects = \App\Models\Subject::where('curriculum_id', $validated['curriculum_id'])
+                ->select('id', 'code', 'name', 'year_level', 'semester', 'units')
+                ->get();
+
+            // 🔹 Step 3: Filter 1st year subjects by semester
+            $firstSem = $subjects->where('year_level', 1)->where('semester', '1st');
+            $secondSem = $subjects->where('year_level', 1)->where('semester', '2nd');
+
+            // 🔹 Step 4: Prepare Advising records
+            $advisingRecords = $subjects
+                ->where('year_level', 1)
+                ->map(function ($subject) use ($user, $uploadedTor) {
+                    $mappedSemester = match ($subject->semester) {
+                        '1st' => 'first_sem',
+                        '2nd' => 'second_sem',
+                        default => strtolower(trim($subject->semester ?? '')),
+                    };
+
+                    return [
+                        'uploaded_tor_id' => $uploadedTor->id,
+                        'user_id' => $user->id,
+                        'subject_id' => $subject->id,
+                        'semester' => $mappedSemester,
+                        'subject_code' => $subject->code,
+                        'year_level' => $subject->year_level,
+                        'subject_title' => $subject->name,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                })
+                ->values()
+                ->toArray();
+
+            // 🔹 Step 5: Save all advising
+            \App\Models\Advising::insert($advisingRecords);
+
+            // 🔹 Step 6: Notify all admins (or specific users)
+            $admins = User::where('role', 'admin')->get(); // Adjust this if your role field is different
+            if ($admins->count()) {
+                Notification::send($admins, new TorSubmittedNotification($uploadedTor, $user));
+            }
+
+            DB::commit();
+
+            // 🔹 Step 6: Return structured response
+            return response()->json([
+                'message' => 'New student advising generated and saved successfully.',
+                'uploaded_tor_id' => $uploadedTor->id,
+                'first_sem' => $firstSem->values(),
+                'second_sem' => $secondSem->values(),
+                'total_first_sem' => $firstSem->count(),
+                'total_second_sem' => $secondSem->count(),
+                'total_saved' => count($advisingRecords),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('❌ Failed to generate and save new student advising', ['error' => $e->getMessage()]);
+            return response()->json([
+                'message' => 'Failed to generate and save advising data.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

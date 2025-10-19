@@ -6,9 +6,14 @@ use App\Models\TorGrade;
 use App\Models\Advising;
 use App\Models\Grade;
 use App\Models\UserOtherInfo;
+use App\Models\UploadedTor;
+use App\Models\User;
+use App\Notifications\TorStatusUpdatedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use App\Services\RemainingProgressService;
 
 class TorApprovalController extends Controller
 {
@@ -33,11 +38,12 @@ class TorApprovalController extends Controller
             if ($otherInfo) {
                 $otherInfo->update([
                     'course_id' => $validated['course_id'],
+                    'status' => 'enrolled',
                 ]);
             }
 
             /** ------------------------------------------------
-             * ✅ 2. Save credited TOR grades only
+             * ✅ 2. Save credited TOR grades
              * ------------------------------------------------ */
             $creditedGrades = collect($request->tor_grades)
                 ->filter(fn($g) => $g['is_credited'] ?? false)
@@ -56,16 +62,15 @@ class TorApprovalController extends Controller
                     'updated_at' => now(),
                 ])->values();
 
-            // Remove old ones first
             TorGrade::where('tor_id', $validated['tor_id'])->delete();
             TorGrade::insert($creditedGrades->toArray());
 
             /** ------------------------------------------------
-             * ✅ 3. Mirror credited TOR grades into GRADES table
+             * ✅ 3. Mirror credited TOR grades into Grades table
              * ------------------------------------------------ */
             $gradesFromTOR = $creditedGrades->map(fn($g) => [
                 'user_id'       => $validated['user_id'],
-                'subject_id'    => $g['credited_id'] ?? null,   // matched subject
+                'subject_id'    => $g['credited_id'] ?? null,
                 'credited_id'   => $g['credited_id'] ?? null,
                 'tor_grade_id'  => $g['tor_id'] ?? null,
                 'advising_id'   => null,
@@ -86,21 +91,21 @@ class TorApprovalController extends Controller
             Advising::where('uploaded_tor_id', $validated['tor_id'])->delete();
 
             $advising = collect($request->advising)->map(fn($a) => [
-                'user_id'        => $validated['user_id'],
-                'uploaded_tor_id'=> $validated['tor_id'],
-                'subject_id'     => $a['subject_id'],
-                'subject_code'   => $a['subject_code'],
-                'semester'       => $a['semester'],
-                'year_level'     => $a['year_level'],
-                'subject_title'  => $a['subject_title'],
-                'created_at'     => now(),
-                'updated_at'     => now(),
+                'user_id'         => $validated['user_id'],
+                'uploaded_tor_id' => $validated['tor_id'],
+                'subject_id'      => $a['subject_id'],
+                'subject_code'    => $a['subject_code'],
+                'semester'        => $a['semester'],
+                'year_level'      => $a['year_level'],
+                'subject_title'   => $a['subject_title'],
+                'created_at'      => now(),
+                'updated_at'      => now(),
             ])->values();
 
             Advising::insert($advising->toArray());
 
             /** ------------------------------------------------
-             * ✅ 5. Mirror advising subjects into GRADES table
+             * ✅ 5. Mirror advising subjects into Grades table
              * ------------------------------------------------ */
             $gradesFromAdvising = $advising->map(fn($a) => [
                 'user_id'       => $validated['user_id'],
@@ -109,7 +114,7 @@ class TorApprovalController extends Controller
                 'tor_grade_id'  => $a['uploaded_tor_id'] ?? null,
                 'advising_id'   => null,
                 'type'          => 'advising',
-                'status'        => 'enrolled', // 👈 for advising subjects
+                'status'        => 'enrolled',
                 'year_level'    => $a['year_level'] ?? null,
                 'grade'         => null,
                 'grade_percent' => null,
@@ -120,7 +125,24 @@ class TorApprovalController extends Controller
             Grade::insert($gradesFromAdvising->toArray());
 
             /** ------------------------------------------------
-             * ✅ 6. Commit all
+             * ✅ 6. Update UploadedTor status to "enrolled"
+             * ------------------------------------------------ */
+            $uploadedTor = UploadedTor::find($validated['tor_id']);
+            $uploadedTor->update(['status' => 'approved']);
+
+            /** ------------------------------------------------
+             * ✅ 7. Notify the user who uploaded the TOR
+             * ------------------------------------------------ */
+            $admin = auth('sanctum')->user();
+            Log::error('admin account' . $admin);
+            $uploader = User::find($uploadedTor->user_id);
+
+            if ($uploader) {
+                $uploader->notify(new TorStatusUpdatedNotification($uploadedTor, 'approved', $admin));
+            }
+
+            /** ------------------------------------------------
+             * ✅ 8. Commit all changes
              * ------------------------------------------------ */
             DB::commit();
 
@@ -130,7 +152,6 @@ class TorApprovalController extends Controller
                 'grades_inserted_count' => $gradesFromTOR->count() + $gradesFromAdvising->count(),
                 'advising_count' => $advising->count(),
             ], 200);
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('TOR Approval failed', ['error' => $e->getMessage()]);
@@ -138,6 +159,37 @@ class TorApprovalController extends Controller
             return response()->json([
                 'message' => 'Approval failed',
                 'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function computeRemainingProgress($torId, $curriculum_id)
+    {
+        set_time_limit(300);
+
+        $tor = UploadedTor::findOrFail($torId);
+        $apiKey = env('TESSERACT_KEY');
+        $imageUrl = $tor->file_path;
+
+        Log::info("🔍 Analyzing TOR ID: {$torId}");
+
+        try {
+            // Run your OCR + Advising + RemainingProgress logic
+            // ✅ If you already have this in place, just call your logic here
+            $remainingProgressService = new RemainingProgressService();
+            $remainingProgress = $remainingProgressService->compute($tor, $curriculum_id);
+
+            return response()->json([
+                'message' => 'TOR analyzed successfully.',
+                'tor_id' => $tor->id,
+                'remaining_progress' => $remainingProgress,
+            ]);
+        } catch (\Exception $e) {
+            Log::error("❌ TOR analysis failed: {$e->getMessage()}");
+
+            return response()->json([
+                'error' => 'Analysis failed.',
+                'message' => $e->getMessage(),
             ], 500);
         }
     }

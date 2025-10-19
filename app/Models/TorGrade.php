@@ -11,6 +11,9 @@ class TorGrade extends Model
 
     protected $casts = [
         'is_credited' => 'boolean',
+        'grade' => 'float',
+        'percent_grade' => 'float',
+        'credits' => 'integer',
     ];
 
     protected $fillable = [
@@ -20,8 +23,6 @@ class TorGrade extends Model
         'credited_id',
         'credited_code',
         'title',
-        'credits',
-        'grade'
     ];
 
     // Relationships
