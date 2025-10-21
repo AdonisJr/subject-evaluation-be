@@ -32,4 +32,14 @@ class Subject extends Model
             'prerequisite_id'
         );
     }
+
+    public function advisings()
+    {
+        return $this->hasMany(Advising::class, 'subject_id');
+    }
+
+    public function grades()
+    {
+        return $this->hasMany(Grade::class);
+    }
 }
