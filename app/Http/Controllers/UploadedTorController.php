@@ -18,7 +18,7 @@ class UploadedTorController extends Controller
     public function index()
     {
         try {
-            $tors = UploadedTor::with('user', 'curriculum.course', 'torGrades', 'advising.subject')
+            $tors = UploadedTor::with('user', 'user.otherInfo', 'curriculum.course', 'torGrades', 'advising.subject')
                 ->orderBy('created_at', 'desc')
                 ->get();
 
@@ -120,12 +120,45 @@ class UploadedTorController extends Controller
     /**
      * Show a specific TOR.
      */
-    public function show(UploadedTor $uploadedTor)
+    // public function show(UploadedTor $uploadedTor)
+    // {
+    //     try {
+    //         return response()->json($uploadedTor->load('user'), 200);
+    //     } catch (Throwable $e) {
+    //         Log::error('Error showing TOR: ' . $e->getMessage());
+    //         return response()->json(['message' => 'Internal Server Error'], 500);
+    //     }
+    // }
+
+    /**
+     * Show a specific uploaded TOR with relationships.
+     */
+    public function show($id)
     {
         try {
-            return response()->json($uploadedTor->load('user'), 200);
-        } catch (Throwable $e) {
-            Log::error('Error showing TOR: ' . $e->getMessage());
+            $tor = UploadedTor::with([
+                'user:id,first_name,last_name,email',
+                'user.otherInfo',
+                'curriculum:id,name,course_id',
+                'curriculum.course:id,code,name',
+                'torGrades',
+                'advising.subject'
+            ])->find($id);
+
+            if (!$tor) {
+                return response()->json(['message' => 'TOR not found'], 404);
+            }
+
+            return response()->json([
+                'message' => 'TOR fetched successfully',
+                'data' => $tor
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching TOR details', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json(['message' => 'Internal Server Error'], 500);
         }
     }

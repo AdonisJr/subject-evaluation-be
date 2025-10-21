@@ -12,6 +12,8 @@ use App\Models\TorGrade;
 use App\Models\User;
 use App\Notifications\TorSubmittedNotification;
 use App\Services\RemainingProgressService;
+use Illuminate\Support\Str;
+
 
 class TesseractOcrController extends Controller
 {
@@ -86,26 +88,61 @@ Return JSON array only in this format:
                 ->keyBy(fn($item) => strtolower(str_replace(' ', '', $item->code)));
 
             $records = collect($jsonData)->map(function ($record) use ($subjects) {
-                // Normalize the OCR subject code (remove spaces, lowercase)
+                // Normalize OCR data
                 $recordCode = strtolower(str_replace(' ', '', $record['code'] ?? ''));
+                $recordTitle = strtolower(preg_replace('/\s+/', ' ', trim($record['title'] ?? '')));
 
-                // Find a subject in the curriculum that matches after normalization
-                $subject = $subjects->first(function ($s) use ($recordCode) {
-                    $subjCode = strtolower(str_replace(' ', '', $s->code));
-                    return $recordCode === $subjCode;
-                });
+                $matchType = 'none'; // For debugging
+                $matchedSubject = null;
 
-                if ($subject) {
-                    $record['credited_id'] = $subject->id;
+                foreach ($subjects as $subject) {
+                    $subjCode = strtolower(str_replace(' ', '', $subject->code));
+                    $subjTitle = strtolower(preg_replace('/\s+/', ' ', trim($subject->name)));
+
+                    // ✅ Exact code match
+                    if ($recordCode === $subjCode) {
+                        $matchType = 'exact_code';
+                        $matchedSubject = $subject;
+                        break;
+                    }
+
+                    // ✅ Partial code (NSTP1 vs NSTP1A)
+                    if (Str::startsWith($recordCode, $subjCode) || Str::startsWith($subjCode, $recordCode)) {
+                        $matchType = 'partial_code';
+                        $matchedSubject = $subject;
+                        break;
+                    }
+
+                    // ✅ Fuzzy code similarity (≥90%)
+                    similar_text($recordCode, $subjCode, $codePercent);
+                    if ($codePercent >= 90) {
+                        $matchType = 'fuzzy_code';
+                        $matchedSubject = $subject;
+                        break;
+                    }
+
+                    // ✅ Fuzzy title similarity (≥85%)
+                    similar_text($recordTitle, $subjTitle, $titlePercent);
+                    if ($titlePercent >= 85) {
+                        $matchType = 'fuzzy_title';
+                        $matchedSubject = $subject;
+                        break;
+                    }
+                }
+
+                if ($matchedSubject) {
+                    $record['credited_id'] = $matchedSubject->id;
                     $record['is_credited'] = true;
-                    $record['credited_code'] = $subject->code;
+                    $record['credited_code'] = $matchedSubject->code;
+                    Log::info("✅ Matched '{$record['code']}' ({$record['title']}) → {$matchedSubject->code} ({$matchedSubject->name}) via {$matchType}");
                 } else {
                     $record['credited_id'] = null;
                     $record['is_credited'] = false;
                     $record['credited_code'] = null;
+                    Log::warning("⚠️ No match for '{$record['code']}' ({$record['title']})");
                 }
 
-                // Normalize for display (keep consistent format)
+                // Normalize for display
                 $record['code'] = strtoupper(str_replace(' ', '', $record['code'] ?? ''));
 
                 return $record;

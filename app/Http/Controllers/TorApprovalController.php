@@ -8,6 +8,7 @@ use App\Models\Grade;
 use App\Models\UserOtherInfo;
 use App\Models\UploadedTor;
 use App\Models\User;
+use App\Notifications\TorRejectNotification;
 use App\Notifications\TorStatusUpdatedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -62,8 +63,33 @@ class TorApprovalController extends Controller
                     'updated_at' => now(),
                 ])->values();
 
-            TorGrade::where('tor_id', $validated['tor_id'])->delete();
-            TorGrade::insert($creditedGrades->toArray());
+            /** ------------------------------------------------
+             * ✅ 2. Save or update credited TOR grades (no delete)
+             * ------------------------------------------------ */
+            $creditedGrades = collect($request->tor_grades)
+                ->filter(fn($g) => $g['is_credited'] ?? false);
+
+            foreach ($creditedGrades as $g) {
+                TorGrade::updateOrCreate(
+                    [
+                        // Uniquely identify grade by tor_id + extracted_code or credited_code
+                        'tor_id' => $validated['tor_id'],
+                        'extracted_code' => $g['extracted_code'] ?? null,
+                    ],
+                    [
+                        'user_id'       => $validated['user_id'],
+                        'credited_id'   => $g['credited_id'] ?? null,
+                        'credited_code' => $g['credited_code'] ?? null,
+                        'title'         => $g['title'] ?? null,
+                        'grade'         => $g['grade'] ?? null,
+                        'credits'       => $g['credits'] ?? null,
+                        'is_credited' => isset($g['is_credited']) ? intval($g['is_credited']) : 0,
+                        'percent_grade' => $g['percent_grade'] ?? null,
+                        'updated_at'    => now(),
+                    ]
+                );
+            }
+
 
             /** ------------------------------------------------
              * ✅ 3. Mirror credited TOR grades into Grades table
@@ -162,6 +188,45 @@ class TorApprovalController extends Controller
             ], 500);
         }
     }
+
+    public function rejectTor($torId)
+    {
+        try {
+            // Find the TOR record
+            $tor = UploadedTor::findOrFail($torId);
+
+            // Update status to rejected
+            $tor->update([
+                'status' => 'rejected',
+            ]);
+
+            $admin = auth('sanctum')->user();
+            $uploader = User::find($tor->user_id);
+
+            if ($uploader) {
+                $uploader->notify(new TorRejectNotification($tor, 'rejected', $admin));
+            }
+
+            // (Optional) Log or notify user
+            // $tor->user->notify(new TorRejectedNotification($tor));
+
+            return response()->json([
+                'message' => 'TOR has been rejected successfully.',
+                'data' => $tor
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('❌ Failed to reject TOR', [
+                'error' => $e->getMessage(),
+                'tor_id' => $torId,
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to reject TOR.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 
     public function computeRemainingProgress($torId, $curriculum_id)
     {
