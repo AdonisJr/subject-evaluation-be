@@ -127,24 +127,27 @@ class DatabaseSeeder extends Seeder
             ['PATHFit4', 'Dance, Sports, Martial Arts, Group Exercise 2', 2, '2nd', 2, ['PATHFit3']],
 
             // Year 3 (sample)
-            ['CIP1101', 'Integrative Programming & Technologies 1', 3, '1st', 3, ['ITPC106']],
-            ['CIT2201', 'Networking 1', 3, '1st', 3, ['ITPC 104']],
-            ['CSA1101', 'Systems Analysis & Design', 3, '1st', 3, []],
-            ['PPE1104', 'Physical Education 4', 2, '1st', 3, []],
-            ['ZGEEL01', 'GE Elective 1', 3, '1st', 3, []],
-            ['CIP1102', 'Integrative Programming & Technologies II', 3, '2nd', 3, ['CIP1101']],
-            ['CIS3201', 'IS Strategy & Management', 3, '2nd', 3, []],
-            ['CPP4980', 'Capstone Project & Research I', 3, '2nd', 3, []],
-            ['ZGE1109', 'Life & Works of Rizal', 3, '2nd', 3, []],
+            ['ITPC109', 'Mobile Application Development', 3, '1st', 3, ['ITCC104', 'ITPC105']],
+            ['ITPC110', 'Computer Networking 2 - Advanced', 3, '1st', 3, ['ITPC104']],
+            ['ITPC111', 'System Analysis and Design', 3, '1st', 3, ['ITCC104', 'ITPC105', 'ITPC106', 'ITPC107']],
+            ['ITELEC101', 'Basic Accounting', 3, '1st', 3, ['ITCC100']],
+            ['ITELEC102', 'Multimedia Development - Video Editing / Animation', 3, '1st', 3, ['ITPC112']],
+            ['ITPC113', 'Technopreneurship', 3, '1st', 3, ['ITPC107']],
+            ['ITPC114', 'Social and Professional Issues', 3, '1st', 3, []],
+
+            ['ITCC105', 'Application Development and Emerging Technologies', 3, '2nd', 3, ['ITPC109']],
+            ['ITPC115', 'Information and Assurance Security 1', 3, '2nd', 3, ['ITPC110', 'ITCC104']],
+            ['GEIT12', 'GIS Applications', 3, '2nd', 3, ['ITCC102']],
+            ['ITPC116', 'System Integration and Architecture', 3, '2nd', 3, ['ITPC108', 'ITPC109', 'ITPC111']],
+            ['ITPC117', 'Capstone Project 1', 3, '2nd', 3, ['ITPC111']],
 
             // Year 4 (sample)
-            ['CIA1101', 'Information Assurance & Security I', 3, '1st', 4, []],
-            ['CISEL02', 'Professional Elective 2', 3, '1st', 4, []],
-            ['CISEL03', 'Professional Elective 3', 3, '1st', 4, []],
-            ['CISEL04', 'Professional Elective 4', 3, '1st', 4, []],
-            ['CPD4990', 'Capstone Project & Research II', 3, '1st', 4, []],
-            ['Practicum', 'Internship / Practicum', 6, '2nd', 4, []],
-            ['SeminarAndTour', 'Seminar & Tour', 3, '2nd', 4, []],
+            ['ITELEC103', 'Simulation and Modeling (Quantitative Methods)', 3, '1st', 4, ['ITPC108']],
+            ['ITPC118', 'Systems Administration and Maintenance', 3, '1st', 4, ['ITPC111']],
+            ['ITPC119', 'Information and Assurance Security 2', 3, '1st', 4, ['ITPC115']],
+            ['ITPC120', 'Capstone Project 2', 3, '1st', 4, ['ITPC117']],
+            
+            ['ITPC121', 'On-the-job Training (486 Hours)', 6, '2nd', 4, []],
         ];
 
         // --- BSIS Subjects 1st–4th Year (template) ---
