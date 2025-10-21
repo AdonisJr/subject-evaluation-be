@@ -87,5 +87,6 @@ Route::middleware('auth-ocr')->group(function () {
 
     // Approver route
     Route::post('/tors/approve', [TorApprovalController::class, 'approve']);
+    Route::post('/tors/reject/{tor_id}', [TorApprovalController::class, 'rejectTor']);
     
 });
