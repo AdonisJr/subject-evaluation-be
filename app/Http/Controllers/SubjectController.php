@@ -76,4 +76,45 @@ class SubjectController extends Controller
 
         return response()->json(['message' => 'Subject deleted successfully']);
     }
+
+    public function getByCurriculum($curriculum_id)
+    {
+        try {
+            $subjects = Subject::where('curriculum_id', $curriculum_id)
+                ->with(['curriculum.course', 'prerequisites'])
+                ->orderBy('year_level')
+                ->orderBy('semester')
+                ->get();
+
+            return response()->json($subjects);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Error fetching subjects for curriculum',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // public function getByCurriculum($curriculum_id)
+    // {
+    //     try {
+    //         $curriculum = Curriculum::with('course')->findOrFail($curriculum_id);
+
+    //         $subjects = Subject::where('curriculum_id', $curriculum_id)
+    //             ->with(['prerequisites'])
+    //             ->orderBy('year_level')
+    //             ->orderBy('semester')
+    //             ->get();
+
+    //         return response()->json([
+    //             'curriculum' => $curriculum,
+    //             'subjects' => $subjects,
+    //         ]);
+    //     } catch (Throwable $e) {
+    //         return response()->json([
+    //             'message' => 'Error fetching subjects for curriculum',
+    //             'error' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
 }
