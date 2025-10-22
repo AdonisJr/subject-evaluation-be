@@ -176,6 +176,16 @@ Return JSON array only in this format:
                     }
                 }
 
+                Log::info('🧩 Creating TorGrade record', [
+                    'grade' => $convertedGrade,
+                    'type' => gettype($convertedGrade),
+                ]);
+
+                Log::info('🧩 Creating TorGrade record', [
+                    'is_credited' => $rec['is_credited'],
+                    'type' => gettype($rec['is_credited']),
+                ]);
+
                 // Save to database
                 TorGrade::create([
                     'tor_id'         => $tor->id,
@@ -183,7 +193,7 @@ Return JSON array only in this format:
                     'extracted_code' => $rec['code'] ?? null,
                     'credited_id'    => $rec['credited_id'] ?? null,
                     'credited_code'  => $rec['credited_code'] ?? null,
-                    'is_credited'    => $rec['is_credited'] ?? false,
+                    'is_credited'    => $rec['is_credited'] ? 1 : 0,
                     'title'          => $rec['title'] ?? '',
                     'grade'          => $convertedGrade,
                     'percent_grade'  => $percentGrade,

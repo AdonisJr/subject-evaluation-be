@@ -9,12 +9,6 @@ class TorGrade extends Model
 {
     use HasFactory;
 
-    protected $casts = [
-        'is_credited' => 'boolean',
-        'percent_grade' => 'float',
-        'credits' => 'integer',
-    ];
-
     protected $fillable = [
         'tor_id',
         'user_id',
@@ -22,7 +16,17 @@ class TorGrade extends Model
         'credited_id',
         'credited_code',
         'title',
+        'grade',
+        'credits',
+        'is_credited',
+        'percent_grade',
+    ];
+
+    protected $casts = [
+        'is_credited' => 'boolean',
         'grade' => 'float',
+        'percent_grade' => 'float',
+        'credits' => 'float',
     ];
 
     // Relationships
