@@ -21,7 +21,7 @@ class Advising extends Model
 
     public function tor()
     {
-        return $this->belongsTo(UploadedTor::class, 'uploaded_tor_id');
+        return $this->belongsTo(UploadedTor::class, 'tor_id');
     }
 
     public function tor_grade()
