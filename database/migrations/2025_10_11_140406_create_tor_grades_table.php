@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('title')->nullable(); // Subject name
             $table->float('grade')->nullable(); // Grade from TOR
             $table->decimal('credits', 5, 2)->default(0); // Units
-            $table->boolean('is_credited')->default(false);
+            $table->tinyInteger('is_credited')->default(0);
             $table->float('percent_grade')->nullable();
             $table->timestamps();
         });
