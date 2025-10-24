@@ -9,6 +9,7 @@ use App\Http\Controllers\UploadedTorController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\CurriculumController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\StatController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TesseractOcrController;
 use App\Http\Controllers\TorApprovalController;
@@ -88,5 +89,8 @@ Route::middleware('auth-ocr')->group(function () {
     // Approver route
     Route::post('/tors/approve', [TorApprovalController::class, 'approve']);
     Route::post('/tors/reject/{tor_id}', [TorApprovalController::class, 'rejectTor']);
+
+
+    Route::get('/student/summary', [StatController::class, 'summary']);
     
 });
