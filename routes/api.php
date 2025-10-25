@@ -92,5 +92,6 @@ Route::middleware('auth-ocr')->group(function () {
 
 
     Route::get('/student/summary', [StatController::class, 'summary']);
+    Route::get('/admin/summary', [StatController::class, 'adminSummary']);
     
 });
