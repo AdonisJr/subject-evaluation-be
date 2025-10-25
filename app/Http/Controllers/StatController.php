@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Grade;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class StatController extends Controller
 {
@@ -35,6 +37,38 @@ class StatController extends Controller
             'done_subjects' => $doneSubjects,
             'enrolled_subjects' => $enrolledSubjects,
             'remaining_semesters' => $remainingSemesters,
+        ]);
+    }
+    public function adminSummary()
+    {
+        // LEFT JOIN users with other_infos
+        $query = DB::table('users')
+            ->leftJoin('user_other_infos', 'users.id', '=', 'user_other_infos.user_id')
+            ->select(
+                'users.id',
+                'user_other_infos.status',
+                'user_other_infos.category'
+            );
+
+        // Count categories
+        $totalEnrolled = (clone $query)->where('user_other_infos.status', 'enrolled')->count();
+        $totalPending = (clone $query)->whereNull('user_other_infos.status')->count();
+        $totalTransferee = (clone $query)->where('user_other_infos.category', 'transferee')->count();
+        $totalShiftee = (clone $query)->where('user_other_infos.category', 'shiftee')->count();
+        $totalNew = (clone $query)->where('user_other_infos.category', 'new')->count();
+
+        // Count users without any other_info record
+        $noOtherInfo = DB::table('users')
+            ->leftJoin('user_other_infos', 'users.id', '=', 'user_other_infos.user_id')
+            ->whereNull('user_other_infos.user_id')
+            ->count();
+
+        return response()->json([
+            'enrolled' => $totalEnrolled,
+            'pending' => $totalPending + $noOtherInfo, // include those with no record
+            'transferee' => $totalTransferee,
+            'shiftee' => $totalShiftee,
+            'new' => $totalNew,
         ]);
     }
 }
