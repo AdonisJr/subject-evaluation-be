@@ -20,6 +20,7 @@ class Grade extends Model
         'year_level',
         'grade',
         'grade_percent',
+        'school_year',
     ];
 
     /* ---------------- Relationships ---------------- */

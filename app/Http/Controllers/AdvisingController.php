@@ -6,7 +6,7 @@ use App\Models\Advising;
 use App\Models\UploadedTor;
 use App\Models\TorGrade;
 use App\Models\User;
-use App\Notifications\TorSubmittedNotification;
+use App\Notifications\NewStudentSubmitted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -55,11 +55,11 @@ class AdvisingController extends Controller
 
             Advising::insert($advisingRecords);
 
-            // ✅ Save OCR records (use `tor_id`, not `uploaded_tor_id`)
+            // ✅ Save OCR records
             TorGrade::where('tor_id', $tor->id)->delete();
             $ocrRecords = collect($validated['ocr_records'])->map(function ($r) use ($tor, $user) {
                 return [
-                    'tor_id' => $tor->id, // ✅ fixed
+                    'tor_id' => $tor->id,
                     'user_id' => $user->id,
                     'extracted_code' => $r['code'] ?? '',
                     'credited_id' => $r['credited_id'] ?? null,
@@ -90,7 +90,6 @@ class AdvisingController extends Controller
         }
     }
 
-
     /**
      * Retrieve advising for a specific TOR
      */
@@ -104,6 +103,9 @@ class AdvisingController extends Controller
         return response()->json($advising);
     }
 
+    /**
+     * Handle advising request for NEW students
+     */
     public function newStudentAdvising(Request $request)
     {
         $validated = $request->validate([
@@ -115,7 +117,7 @@ class AdvisingController extends Controller
         DB::beginTransaction();
         try {
             // 🔹 Step 1: Create UploadedTor entry
-            $uploadedTor = \App\Models\UploadedTor::create([
+            $uploadedTor = UploadedTor::create([
                 'user_id' => $user->id,
                 'curriculum_id' => $validated['curriculum_id'],
                 'file_path' => null,
@@ -128,11 +130,10 @@ class AdvisingController extends Controller
                 ->select('id', 'code', 'name', 'year_level', 'semester', 'units')
                 ->get();
 
-            // 🔹 Step 3: Filter 1st year subjects by semester
             $firstSem = $subjects->where('year_level', 1)->where('semester', '1st');
             $secondSem = $subjects->where('year_level', 1)->where('semester', '2nd');
 
-            // 🔹 Step 4: Prepare Advising records
+            // 🔹 Step 3: Prepare Advising records
             $advisingRecords = $subjects
                 ->where('year_level', 1)
                 ->map(function ($subject) use ($user, $uploadedTor) {
@@ -157,18 +158,23 @@ class AdvisingController extends Controller
                 ->values()
                 ->toArray();
 
-            // 🔹 Step 5: Save all advising
-            \App\Models\Advising::insert($advisingRecords);
+            Advising::insert($advisingRecords);
 
-            // 🔹 Step 6: Notify all admins (or specific users)
-            $admins = User::where('role', 'admin')->get(); // Adjust this if your role field is different
-            if ($admins->count()) {
-                Notification::send($admins, new TorSubmittedNotification($uploadedTor, $user));
+            // 🔹 Step 4: Notify all admins
+            $admins = User::where('role', 'admin')->get();
+            if ($admins->count() > 0) {
+                Notification::send($admins, new NewStudentSubmitted($uploadedTor, $user));
+                Log::info('📢 Notification sent to admins for new advising request.', [
+                    'admin_count' => $admins->count(),
+                    'user' => $user->email,
+                    'tor_id' => $uploadedTor->id,
+                ]);
+            } else {
+                Log::warning('⚠️ No admins found to notify.');
             }
 
             DB::commit();
 
-            // 🔹 Step 6: Return structured response
             return response()->json([
                 'message' => 'New student advising generated and saved successfully.',
                 'uploaded_tor_id' => $uploadedTor->id,
@@ -180,7 +186,11 @@ class AdvisingController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('❌ Failed to generate and save new student advising', ['error' => $e->getMessage()]);
+            Log::error('❌ Failed to generate and save new student advising', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'message' => 'Failed to generate and save advising data.',
                 'error' => $e->getMessage(),

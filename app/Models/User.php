@@ -26,6 +26,8 @@ class User extends Authenticatable
         'address',
         'email',
         'password',
+        'year_level',
+        'is_deleted'
     ];
 
     public function otherInfo()
