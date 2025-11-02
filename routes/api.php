@@ -73,6 +73,8 @@ Route::middleware('auth-ocr')->group(function () {
 
     Route::get('/users/other-info', [UserOtherInfoController::class, 'show']);
     Route::post('/users/other-info', [UserOtherInfoController::class, 'storeOrUpdate']);
+    Route::post('/users/update/{id}', [UserOtherInfoController::class, 'adminStoreOrUpdateUser']);
+    Route::patch('/users/{user}/toggle-active', [UserController::class, 'toggleActive']);
 
     // advising
     Route::post('/advising', [AdvisingController::class, 'store']);
@@ -93,5 +95,4 @@ Route::middleware('auth-ocr')->group(function () {
 
     Route::get('/student/summary', [StatController::class, 'summary']);
     Route::get('/admin/summary', [StatController::class, 'adminSummary']);
-    
 });

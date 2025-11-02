@@ -47,6 +47,12 @@ class AuthController extends Controller
         ]);
 
         $user = User::where('email', $validated['email'])->first();
+        
+        if ($user->is_deleted == 1) {
+            return response()->json([
+                'message' => 'Your account has been deactivated. Please contact the administrator.'
+            ], 409);
+        }
 
         if (! $user || ! Hash::check($validated['password'], $user->password)) {
             return response()->json(['error' => 'Invalid credentials'], 401);

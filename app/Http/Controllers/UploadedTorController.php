@@ -243,12 +243,12 @@ class UploadedTorController extends Controller
                 'file_name' => $request->file('file')?->getClientOriginalName(),
             ]);
 
-            // Validate only file (curriculum_id is from route)
+            // ✅ Validate only file (curriculum_id is from route)
             $validated = $request->validate([
                 'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
             ]);
 
-            // Check auth
+            // ✅ Check auth
             $user = auth('sanctum')->user();
             if (!$user) {
                 Log::warning("Unauthorized upload attempt");
@@ -257,7 +257,19 @@ class UploadedTorController extends Controller
 
             Log::info("Authenticated user ID: {$user->id}");
 
-            // Upload to Cloudinary
+            // ✅ Check existing TOR safely
+            $tor = UploadedTor::where('user_id', $user->id)
+                ->where('curriculum_id', $curriculum_id)
+                ->latest()
+                ->first();
+
+            if ($tor && $tor->status === 'submitted') {
+                return response()->json([
+                    'message' => 'Your TOR is still under evaluation. Please wait before uploading another.'
+                ], 429);
+            }
+
+            // ✅ Upload to Cloudinary
             Log::info("☁️ Uploading to Cloudinary...");
             $cloudinary = new \Cloudinary\Cloudinary(config('cloudinary.cloud_url'));
 
@@ -287,26 +299,24 @@ class UploadedTorController extends Controller
                 'curriculum_id' => $curriculum_id,
                 'file_path' => $secureUrl,
                 'public_id' => $publicId,
-                'file_type' => $resourceType
+                'file_type' => $resourceType,
+                'status' => 'processing',
             ]);
 
             Log::info("💾 Saved UploadedTor ID: {$uploadedTor->id}");
 
-            // Analyze TOR immediately
+            // ✅ Analyze TOR immediately
             Log::info("Starting OCR analysis...");
             $ocrController = new \App\Http\Controllers\TesseractOcrController();
             $analysisResponse = $ocrController->analyzeTor($uploadedTor->id, $curriculum_id);
 
-            if ($analysisResponse instanceof \Illuminate\Http\JsonResponse) {
-                $analysisData = $analysisResponse->getData(true);
-            } else {
-                $analysisData = $analysisResponse;
-            }
+            $analysisData = $analysisResponse instanceof \Illuminate\Http\JsonResponse
+                ? $analysisResponse->getData(true)
+                : $analysisResponse;
 
             Log::info("OCR analysis complete for TOR ID {$uploadedTor->id}");
 
-            // Mark as success
-
+            // ✅ Done
             return response()->json([
                 'message' => 'TOR uploaded and analyzed successfully',
                 'upload' => $uploadedTor,
@@ -325,7 +335,7 @@ class UploadedTorController extends Controller
                 'user_id' => \Illuminate\Support\Facades\Auth::id(),
             ]);
 
-            //Update TOR status if it was already created
+            // ✅ Mark as failed only if TOR exists
             if (isset($uploadedTor)) {
                 $uploadedTor->update(['status' => 'failed']);
             }

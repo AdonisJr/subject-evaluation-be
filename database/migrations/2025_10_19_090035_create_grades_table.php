@@ -23,6 +23,7 @@ return new class extends Migration
             $table->integer('year_level')->nullable();
             $table->decimal('grade', 4, 2)->nullable();
             $table->integer('grade_percent')->nullable();
+            $table->string('school_year')->nullable();
             $table->timestamps();
         });
     }

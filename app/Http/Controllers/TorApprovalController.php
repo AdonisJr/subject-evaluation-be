@@ -26,6 +26,7 @@ class TorApprovalController extends Controller
             'course_id' => 'required|exists:courses,id',
             'tor_grades' => 'array',
             'advising' => 'array',
+            'school_year' => 'required|string',
         ]);
 
         DB::beginTransaction();
@@ -57,6 +58,7 @@ class TorApprovalController extends Controller
                     'title' => $g['title'] ?? null,
                     'grade' => $g['grade'] ?? null,
                     'credits' => $g['credits'] ?? null,
+                    'school_year' => $g['school_year'] ?? null,
                     'is_credited' => $g['is_credited'] ?? null,
                     'percent_grade' => $g['percent_grade'] ?? null,
                     'created_at' => now(),
@@ -105,6 +107,7 @@ class TorApprovalController extends Controller
                 'year_level'    => null,
                 'grade'         => $g['grade'] ?? null,
                 'grade_percent' => $g['percent_grade'] ?? null,
+                'school_year' => $g['school_year'] ?? null,
                 'created_at'    => now(),
                 'updated_at'    => now(),
             ]);
@@ -123,6 +126,7 @@ class TorApprovalController extends Controller
                 'subject_code'    => $a['subject_code'],
                 'semester'        => $a['semester'],
                 'year_level'      => $a['year_level'],
+                'school_year'      => $a['school_year'],
                 'subject_title'   => $a['subject_title'],
                 'created_at'      => now(),
                 'updated_at'      => now(),

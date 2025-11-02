@@ -17,6 +17,7 @@ class Advising extends Model
         'subject_code',
         'subject_title',
         'subject_id',
+        'school_year'
     ];
 
     public function tor()
