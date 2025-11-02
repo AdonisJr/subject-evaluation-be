@@ -13,11 +13,16 @@ class AuthMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Check if user is authenticated via Sanctum
-        if (!auth('sanctum')->check()) {
+        $user = auth('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        if ($user->is_deleted == 1) {
             return response()->json([
-                'message' => 'Unauthenticated.'
-            ], 401);
+                'message' => 'Your account has been deactivated. Please contact the administrator.'
+            ], 409);
         }
 
         return $next($request);

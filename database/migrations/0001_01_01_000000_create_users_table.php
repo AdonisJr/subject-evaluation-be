@@ -17,11 +17,12 @@ return new class extends Migration
             $table->string('first_name');
             $table->string('last_name');
             $table->string('address')->nullable();
-            $table->string('year-level')->nullable();
+            $table->string('year_level')->nullable();
             $table->string('course')->nullable();
             $table->string('type')->nullable();
             $table->string('role')->default('user');
             $table->string('email')->unique();
+            $table->boolean('is_deleted')->default(false);
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();

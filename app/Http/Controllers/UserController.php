@@ -17,7 +17,7 @@ class UserController extends Controller
     public function index()
     {
         try {
-            $users = User::all();
+            $users = User::with('otherInfo.course')->get();
             return response()->json($users, 200);
         } catch (Throwable $e) {
             Log::error('Error fetching users: ' . $e->getMessage(), [
@@ -159,6 +159,32 @@ class UserController extends Controller
         } catch (Throwable $e) {
             Log::error('Error fetching authenticated user info: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json(['message' => 'Internal Server Error'], 500);
+        }
+    }
+
+    /**
+     * Toggle user active/inactive status.
+     */
+    public function toggleActive(User $user)
+    {
+        try {
+            // Flip the is_deleted flag
+            $user->is_deleted = $user->is_deleted ? 0 : 1;
+            $user->save();
+
+            $status = $user->is_deleted ? 'deactivated' : 'activated';
+
+            return response()->json([
+                'message' => "User successfully {$status}.",
+                'user' => $user
+            ], 200);
+        } catch (Throwable $e) {
+            Log::error('Error toggling user active status: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $user->id ?? null,
             ]);
 
             return response()->json(['message' => 'Internal Server Error'], 500);

@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('subject_code');
             $table->string('year_level');
             $table->string('subject_title');
+            $table->string('school_year')->nullable();
             $table->timestamps();
         });
     }
