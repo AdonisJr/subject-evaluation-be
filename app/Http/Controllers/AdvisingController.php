@@ -52,7 +52,8 @@ class AdvisingController extends Controller
                     ];
                 }
             }
-
+            $tor->status = 'submitted';
+            $tor->save();
             Advising::insert($advisingRecords);
 
             // ✅ Save OCR records
