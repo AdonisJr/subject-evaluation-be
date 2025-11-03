@@ -19,6 +19,7 @@ class UploadedTorController extends Controller
     {
         try {
             $tors = UploadedTor::with('user', 'user.otherInfo', 'curriculum.course', 'torGrades', 'advising.subject')
+                ->where('status', '!=', 'processing')
                 ->orderBy('created_at', 'desc')
                 ->get();
 
@@ -221,6 +222,7 @@ class UploadedTorController extends Controller
         try {
             $tors = UploadedTor::with('user')
                 ->where('user_id', $user->id)
+                ->where('status', '!=', 'processing')
                 ->orderBy('created_at', 'desc')
                 ->get();
 
@@ -259,7 +261,7 @@ class UploadedTorController extends Controller
 
             // ✅ Check existing TOR safely
             $tor = UploadedTor::where('user_id', $user->id)
-                ->where('curriculum_id', $curriculum_id)
+                ->where('status', 'submitted')
                 ->latest()
                 ->first();
 

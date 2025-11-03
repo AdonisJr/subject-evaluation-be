@@ -281,10 +281,10 @@ Return JSON array only in this format:
             $secondResult = $computeEligible($secondSemAll, $passed, 27);
 
             // 🟢 Step 6. Update TOR status
-            $tor->update([
-                'status' => 'submitted',
-                'remarks' => 'OCR and advising completed successfully.'
-            ]);
+            // $tor->update([
+            //     'status' => 'submitted',
+            //     'remarks' => 'OCR and advising completed successfully.'
+            // ]);
 
             Log::info("✅ TOR analysis + advising complete for ID {$torId}");
 
