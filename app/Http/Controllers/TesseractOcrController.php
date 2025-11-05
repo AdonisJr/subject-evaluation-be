@@ -289,19 +289,19 @@ Return JSON array only in this format:
             Log::info("✅ TOR analysis + advising complete for ID {$torId}");
 
             // ✅ Notify all admins that this TOR was successfully submitted
-            $user = $tor->user; // define user based on the uploaded TOR record
+            // $user = $tor->user; // define user based on the uploaded TOR record
 
-            if ($user) {
-                $admins = User::where('role', 'admin')->get();
+            // if ($user) {
+            //     $admins = User::where('role', 'admin')->get();
 
-                foreach ($admins as $admin) {
-                    $admin->notify(new TorSubmittedNotification($tor, $user));
-                }
+            //     foreach ($admins as $admin) {
+            //         $admin->notify(new TorSubmittedNotification($tor, $user));
+            //     }
 
-                Log::info("📨 Notified all admins about TOR ID {$torId} from {$user->email}");
-            } else {
-                Log::warning("⚠️ No user found for TOR ID {$torId} — skipping admin notification");
-            }
+            //     Log::info("📨 Notified all admins about TOR ID {$torId} from {$user->email}");
+            // } else {
+            //     Log::warning("⚠️ No user found for TOR ID {$torId} — skipping admin notification");
+            // }
 
             // 🧮 Step 7. Compute remaining progress
             // $remainingProgress = $this->remainingProgressService->compute($tor, $curriculum_id);
