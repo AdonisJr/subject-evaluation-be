@@ -58,7 +58,7 @@ class TorApprovalController extends Controller
                     'title' => $g['title'] ?? null,
                     'grade' => $g['grade'] ?? null,
                     'credits' => $g['credits'] ?? null,
-                    'school_year' => $g['school_year'] ?? null,
+                    'school_year' => $validated['school_year'] ?? null,
                     'is_credited' => $g['is_credited'] ?? null,
                     'percent_grade' => $g['percent_grade'] ?? null,
                     'created_at' => now(),
@@ -107,7 +107,7 @@ class TorApprovalController extends Controller
                 'year_level'    => null,
                 'grade'         => $g['grade'] ?? null,
                 'grade_percent' => $g['percent_grade'] ?? null,
-                'school_year' => $g['school_year'] ?? null,
+                'school_year' => $validated['school_year'] ?? null,
                 'created_at'    => now(),
                 'updated_at'    => now(),
             ]);
@@ -126,7 +126,7 @@ class TorApprovalController extends Controller
                 'subject_code'    => $a['subject_code'],
                 'semester'        => $a['semester'],
                 'year_level'      => $a['year_level'],
-                'school_year'      => $a['school_year'],
+                'school_year'      => $validated['school_year'],
                 'subject_title'   => $a['subject_title'],
                 'created_at'      => now(),
                 'updated_at'      => now(),
@@ -148,6 +148,7 @@ class TorApprovalController extends Controller
                 'year_level'    => $a['year_level'] ?? null,
                 'grade'         => null,
                 'grade_percent' => null,
+                'school_year' => $validated['school_year'] ?? null,
                 'created_at'    => now(),
                 'updated_at'    => now(),
             ]);
@@ -218,31 +219,38 @@ class TorApprovalController extends Controller
             return ['year_level' => null, 'type' => 'unknown'];
         }
 
-        // Fetch all subjects grouped by year level
+        // Group subjects by year level
         $subjectsByYear = \App\Models\Subject::where('curriculum_id', $curriculum->id)
             ->get()
             ->groupBy('year_level');
 
-        // Find all subject IDs the student has done or is enrolled in
+        // All subject IDs student has already taken (done or enrolled)
         $studentSubjectIds = \App\Models\Grade::where('user_id', $userId)
+            ->whereIn('status', ['done', 'enrolled'])
             ->pluck('subject_id')
             ->toArray();
 
-        $currentYearLevel = 4; // default to 4th if everything is almost done
+        $yearLevels = [1, 2, 3, 4];
+        $currentYearLevel = 1;
 
-        foreach ($subjectsByYear as $yearLevel => $subjects) {
+        foreach ($yearLevels as $year) {
+            $subjects = $subjectsByYear[$year] ?? collect();
             $total = $subjects->count();
             $doneCount = $subjects->whereIn('id', $studentSubjectIds)->count();
+            $remaining = $total - $doneCount;
 
-            if ($doneCount < $total) {
-                $currentYearLevel = (int) $yearLevel;
-                break; // the first year level with remaining subjects
+            // If few subjects left in this year, advance to next
+            if ($remaining <= 3 && $year < 4) {
+                $currentYearLevel = $year + 1;
+            } elseif ($remaining > 3) {
+                $currentYearLevel = $year;
+                break;
             }
         }
 
-        // Check enrolled subjects' year levels
+        // Check enrolled year levels to determine irregular/regular
         $enrolledYearLevels = \App\Models\Grade::where('user_id', $userId)
-            ->where('status', 'enrolled')
+            ->whereIn('status', ['enrolled', 'done'])
             ->whereNotNull('year_level')
             ->pluck('year_level')
             ->unique()
@@ -251,11 +259,18 @@ class TorApprovalController extends Controller
 
         $type = count($enrolledYearLevels) > 1 ? 'irregular' : 'regular';
 
+        // ✅ Update user table (since you said year_level and type are there)
+        $user->update([
+            'year_level' => $currentYearLevel,
+            'type' => $type,
+        ]);
+
         return [
             'year_level' => $currentYearLevel,
             'type' => $type,
         ];
     }
+
 
 
     public function rejectTor($torId)
