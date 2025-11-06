@@ -157,6 +157,17 @@ class TorApprovalController extends Controller
             /** ------------------------------------------------
              * ✅ 6. Update UploadedTor status to "enrolled"
              * ------------------------------------------------ */
+
+            $typeData = $this->computeStudentYearAndStatus($validated['user_id']);
+
+            User::updateOrCreate(
+                ['id' => $validated['user_id']],
+                [
+                    'year_level' => $typeData['year_level'],
+                    'type' => $typeData['type'],
+                ]
+            );
+
             $uploadedTor = UploadedTor::find($validated['tor_id']);
             $uploadedTor->update(['status' => 'approved']);
 
@@ -192,6 +203,60 @@ class TorApprovalController extends Controller
             ], 500);
         }
     }
+
+    private function computeStudentYearAndStatus($userId)
+    {
+        $user = User::with('otherInfo.course')->find($userId);
+        if (!$user || !$user->otherInfo || !$user->otherInfo->course_id) {
+            return ['year_level' => null, 'type' => 'unknown'];
+        }
+
+        $courseId = $user->otherInfo->course_id;
+        $curriculum = \App\Models\Curriculum::where('course_id', $courseId)->first();
+
+        if (!$curriculum) {
+            return ['year_level' => null, 'type' => 'unknown'];
+        }
+
+        // Fetch all subjects grouped by year level
+        $subjectsByYear = \App\Models\Subject::where('curriculum_id', $curriculum->id)
+            ->get()
+            ->groupBy('year_level');
+
+        // Find all subject IDs the student has done or is enrolled in
+        $studentSubjectIds = \App\Models\Grade::where('user_id', $userId)
+            ->pluck('subject_id')
+            ->toArray();
+
+        $currentYearLevel = 4; // default to 4th if everything is almost done
+
+        foreach ($subjectsByYear as $yearLevel => $subjects) {
+            $total = $subjects->count();
+            $doneCount = $subjects->whereIn('id', $studentSubjectIds)->count();
+
+            if ($doneCount < $total) {
+                $currentYearLevel = (int) $yearLevel;
+                break; // the first year level with remaining subjects
+            }
+        }
+
+        // Check enrolled subjects' year levels
+        $enrolledYearLevels = \App\Models\Grade::where('user_id', $userId)
+            ->where('status', 'enrolled')
+            ->whereNotNull('year_level')
+            ->pluck('year_level')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $type = count($enrolledYearLevels) > 1 ? 'irregular' : 'regular';
+
+        return [
+            'year_level' => $currentYearLevel,
+            'type' => $type,
+        ];
+    }
+
 
     public function rejectTor($torId)
     {
