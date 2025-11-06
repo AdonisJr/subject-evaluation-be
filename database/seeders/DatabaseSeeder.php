@@ -13,6 +13,26 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+
+        $adminNames = [
+            ['Shiela Jane', 'Pena'],
+            ['Manuel', 'Tabada'],
+            ['Jef', 'Deleon'],
+            ['Merly', 'Diegas'],
+            ['Bernie S.', 'Balighot'],
+            ['James Cloyd M.', 'Bustillo'],
+            ['Zaldy', 'Beloy'],
+            ['Jennifer', 'Burlado'],
+            ['Roxan', 'Remorosa'],
+            ['Beverly O.', 'Galicia'],
+            ['Mark D.', 'Ytoc'],
+            ['Shahanneh', 'De Asis'],
+            ['Josephine', 'Madayag'],
+            ['Rodel B.', 'Azura'],
+            ['Juzavil J.', 'Juario'],
+            ['Carl Kenneth', 'Navarro'],
+        ];
+
         // --- Admin User ---
         User::factory()->create([
             'first_name' => 'Admin',
@@ -22,38 +42,103 @@ class DatabaseSeeder extends Seeder
             'password'   => Hash::make('123'),
         ]);
 
+        foreach ($adminNames as $index => $name) {
 
-        // --- 20 Student Users ---
-        $studentNames = [
-            ['Juan', 'Dela Cruz'],
-            ['Maria', 'Lopez'],
-            ['Jose', 'Santos'],
-            ['Ana', 'Reyes'],
-            ['Carlo', 'Garcia'],
-            ['Liza', 'Ramos'],
-            ['Mark', 'Fernandez'],
-            ['Ella', 'Torres'],
-            ['Paolo', 'Mendoza'],
-            ['Grace', 'Bautista'],
-            ['Rafael', 'Navarro'],
-            ['Bianca', 'Cruz'],
-            ['Miguel', 'Aquino'],
-            ['Patricia', 'Villanueva'],
-            ['Leo', 'Domingo'],
-            ['Sofia', 'Castillo'],
-            ['Daniel', 'Perez'],
-            ['Clarisse', 'Santiago'],
-            ['Gabriel', 'De Leon'],
-            ['Angela', 'Flores'],
-        ];
+            $lastNameLower = strtolower(str_replace(' ', '', $name[1])); // remove spaces + lowercase
 
-        foreach ($studentNames as $index => $name) {
             User::factory()->create([
                 'first_name' => $name[0],
                 'last_name'  => $name[1],
+                'role'       => 'admin',
+                'email'      => $lastNameLower . '@gmail.com',
+                'password'   => Hash::make($lastNameLower . '123'),
+            ]);
+        }
+
+
+        // --- 20 Student Users ---
+        $studentNames = [
+            ['Charles', 'Mosende'],
+            ['Jyrah', 'Amarante'],
+            ['Guirtfield', 'Roa'],
+            ['Jhana', 'Pactao-in'],
+            ['Diana Rose', 'Numeron'],
+            ['Junnel', 'Siarot'],
+            ['Dave', 'Dalayap'],
+            ['Jay', 'Dechosa'],
+            ['Joel', 'Abrinella'],
+            ['Micheal', 'Paloa'],
+            ['Apple Jean', 'Tejada'],
+            ['Christian Joe', 'Cagas'],
+            ['John Ril', 'Morales'],
+            ['User', 'Osin'],
+            ['Luis', 'Sedillo'],
+            ['Vinche', 'Cajes'],
+            ['John Kenneth C.', 'Andrade'],
+            ['Justin James', 'Puyo'],
+            ['Mark', 'Gementiza'],
+            ['Ive Jane', 'Sabando'],
+            ['Jasmine D.', 'Terante'],
+            ['Lovely', 'Divino'],
+            ['Jessica Ellaine', 'Navos'],
+            ['Lilibeth', 'Macasampon'],
+            ['Hazel', 'Ibarra'],
+            ['Charles', 'Caoile'],
+            ['Lovely Mae', 'Martinez'],
+            ['Christian G.', 'Adevino'],
+            ['Christian Angelo', 'Genotiva'],
+            ['Norie', 'Suganob'],
+            ['Zkyrt', 'Lunas'],
+            ['Earth Jhon Joseph', 'Plaza'],
+            ['Elijah James A.', 'Lota'],
+            ['Jay-Ar', 'Pongase'],
+            ['Luie Jay A.', 'Mondejar'],
+            ['Rufa', 'Casipong'],
+            ['Melchiyah', 'Catan'],
+            ['Jazel J.', 'Corbella'],
+            ['Jaime', 'Otang'],
+            ['Melvin', 'Clemente'],
+            ['Jasper', 'Enonaria'],
+            ['Jacob', 'Claro'],
+            ['Drix', 'Bebis'],
+            ['User', 'Samantha'],
+            ['Shek', 'Sentones'],
+            ['Saira', 'Condejar'],
+            ['Ronemar', 'Camacho'],
+            ['Jackelyn', 'Sarino'],
+            ['Micheal Angelo', 'Lofranco'],
+            ['Dave', 'Salvador'],
+            ['Daniela', 'Rocero'],
+            ['Erl Jhon', 'Pocon'],
+            ['Rolly', 'Junsay'],
+            ['Leo Renz', 'Parilla'],
+            ['Kimberly', 'Duites'],
+            ['Jeffer', 'Danguis'],
+            ['John Mark', 'Belar'],
+            ['Charlie', 'Lerio'],
+            ['Charles L.', 'Nocos'],
+            ['Eugene Carl', 'Catanus'],
+            ['Julie Rose', 'Balucos'],
+            ['Rose Jean', 'Rosales'],
+            ['Mery Clear', 'Jalalon'],
+            ['Joshua', 'Lumano'],
+            ['Kristian Jake', 'Espana'],
+            ['Cristina Mie', 'Visto'],
+            ['Mikylla', 'Barrios'],
+        ];
+
+
+        foreach ($studentNames as $index => $name) {
+            $lastNameLower = strtolower(str_replace(' ', '', $name[1])); // remove spaces + lowercase
+            $studentId = str_pad(rand(0, 9999999999999), 13, '0', STR_PAD_LEFT); // 13-digit random number
+
+            User::factory()->create([
+                'first_name' => $name[0],
+                'last_name'  => $name[1],
+                'student_id' => $studentId,
                 'role'       => 'user',
-                'email'      => 'user' . ($index + 1) . '@gmail.com',
-                'password'   => Hash::make('123'),
+                'email'      => $lastNameLower . '@gmail.com',
+                'password'   => Hash::make($lastNameLower . '123'),
             ]);
         }
 
@@ -146,7 +231,7 @@ class DatabaseSeeder extends Seeder
             ['ITPC118', 'Systems Administration and Maintenance', 3, '1st', 4, ['ITPC111']],
             ['ITPC119', 'Information and Assurance Security 2', 3, '1st', 4, ['ITPC115']],
             ['ITPC120', 'Capstone Project 2', 3, '1st', 4, ['ITPC117']],
-            
+
             ['ITPC121', 'On-the-job Training (486 Hours)', 6, '2nd', 4, []],
         ];
 
