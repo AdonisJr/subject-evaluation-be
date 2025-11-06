@@ -7,6 +7,7 @@ use App\Models\UploadedTor;
 use App\Models\TorGrade;
 use App\Models\User;
 use App\Notifications\NewStudentSubmitted;
+use App\Notifications\TorSubmittedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -67,7 +68,7 @@ class AdvisingController extends Controller
                     'credited_code' => $r['credited_code'] ?? null,
                     'title' => $r['title'] ?? '',
                     'credits' => $r['credits'] ?? 0,
-                    'grade' => $r['grade'] ?? '',
+                    'grade' => $r['grade'] ?? null,
                     'is_credited' => $r['is_credited'] ?? false,
                     'percent_grade' => $r['percent_grade'] ?? null,
                     'created_at' => now(),
@@ -76,6 +77,22 @@ class AdvisingController extends Controller
             })->toArray();
 
             TorGrade::insert($ocrRecords);
+
+
+            // ✅ Notify all admins about new submission
+            $user = $tor->user; // define user based on the uploaded TOR record
+
+            if ($user) {
+                $admins = User::where('role', 'admin')->get();
+
+                foreach ($admins as $admin) {
+                    $admin->notify(new TorSubmittedNotification($tor, $user));
+                }
+
+                Log::info("📨 Notified all admins about TOR ID {$tor->id} from {$user->email}");
+            } else {
+                Log::warning("⚠️ No user found for TOR ID {$tor->id} — skipping admin notification");
+            }
 
             DB::commit();
 
