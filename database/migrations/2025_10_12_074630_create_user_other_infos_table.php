@@ -25,6 +25,10 @@ return new class extends Migration
             $table->string('height')->nullable();
             $table->string('weight')->nullable();
             $table->string('religion')->nullable();
+            $table->string('permanent_address')->nullable();
+            $table->string('current_address')->nullable();
+            $table->string('father')->nullable();
+            $table->string('mother')->nullable();
             $table->string('status')->nullable();
             $table->timestamps();
         });

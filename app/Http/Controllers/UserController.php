@@ -17,7 +17,7 @@ class UserController extends Controller
     public function index()
     {
         try {
-            $users = User::with('otherInfo.course')->get();
+            $users = User::with('otherInfo.course')->where('role', 'user')->get();
             return response()->json($users, 200);
         } catch (Throwable $e) {
             Log::error('Error fetching users: ' . $e->getMessage(), [

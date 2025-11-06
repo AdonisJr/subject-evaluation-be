@@ -23,6 +23,10 @@ class UserOtherInfo extends Model
         'weight',
         'religion',
         'status',
+        'permanent_address',
+        'current_address',
+        'mother',
+        'father',
     ];
 
     public function user()
