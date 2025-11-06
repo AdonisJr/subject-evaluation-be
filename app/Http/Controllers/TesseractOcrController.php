@@ -56,7 +56,7 @@ Return JSON array only in this format:
                 ]);
 
             if ($response->failed()) {
-                Log::error("❌ OCR request failed: " . $response->body());
+                Log::error("OCR request failed: " . $response->body());
                 return response()->json([
                     'error' => 'OCR request failed',
                     'details' => $response->body()
@@ -71,7 +71,7 @@ Return JSON array only in this format:
             $jsonData = json_decode($cleaned, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                Log::warning("⚠️ Failed to parse OCR JSON");
+                Log::warning("Failed to parse OCR JSON");
                 $tor->update(['status' => 'failed', 'remarks' => 'Failed to parse OCR JSON.']);
                 return response()->json([
                     'tor_id' => $torId,
@@ -80,9 +80,9 @@ Return JSON array only in this format:
                 ]);
             }
 
-            Log::info("✅ OCR parsed successfully");
+            Log::info(" OCR parsed successfully");
 
-            // 🧩 Step 3. Clean and match OCR subjects with curriculum
+            // Step 3. Clean and match OCR subjects with curriculum
             $subjects = Subject::where('curriculum_id', $curriculum_id)
                 ->get()
                 ->keyBy(fn($item) => strtolower(str_replace(' ', '', $item->code)));
@@ -99,21 +99,21 @@ Return JSON array only in this format:
                     $subjCode = strtolower(str_replace(' ', '', $subject->code));
                     $subjTitle = strtolower(preg_replace('/\s+/', ' ', trim($subject->name)));
 
-                    // ✅ Exact code match
+                    // Exact code match
                     if ($recordCode === $subjCode) {
                         $matchType = 'exact_code';
                         $matchedSubject = $subject;
                         break;
                     }
 
-                    // ✅ Partial code (NSTP1 vs NSTP1A)
+                    // Partial code (NSTP1 vs NSTP1A)
                     if (Str::startsWith($recordCode, $subjCode) || Str::startsWith($subjCode, $recordCode)) {
                         $matchType = 'partial_code';
                         $matchedSubject = $subject;
                         break;
                     }
 
-                    // ✅ Fuzzy code similarity (≥90%)
+                    // Fuzzy code similarity (≥90%)
                     similar_text($recordCode, $subjCode, $codePercent);
                     if ($codePercent >= 90) {
                         $matchType = 'fuzzy_code';
@@ -121,7 +121,7 @@ Return JSON array only in this format:
                         break;
                     }
 
-                    // ✅ Fuzzy title similarity (≥85%)
+                    // Fuzzy title similarity (≥85%)
                     similar_text($recordTitle, $subjTitle, $titlePercent);
                     if ($titlePercent >= 85) {
                         $matchType = 'fuzzy_title';
@@ -139,7 +139,7 @@ Return JSON array only in this format:
                     $record['credited_id'] = null;
                     $record['is_credited'] = false;
                     $record['credited_code'] = null;
-                    Log::warning("⚠️ No match for '{$record['code']}' ({$record['title']})");
+                    Log::warning(" No match for '{$record['code']}' ({$record['title']})");
                 }
 
                 // Normalize for display
@@ -149,7 +149,8 @@ Return JSON array only in this format:
             });
 
 
-            // 💾 Step 4. Save results to tor_grades (with grade conversion + percent grade)
+            //Step 4. Save results to tor_grades (with grade conversion + percent grade)
+            //Step 4. Save results to tor_grades (with grade conversion + percent grade)
             $records = $records->map(function ($rec) use ($tor) {
                 $rawGrade = $rec['grade'] ?? null;
                 $convertedGrade = null;
@@ -159,7 +160,7 @@ Return JSON array only in this format:
                     $gradeValue = floatval($rawGrade);
                     $percentGrade = $gradeValue; // original percent
 
-                    // 🔁 Convert % grade (if >5 means percent)
+                    // Convert % grade (if >5 means percent)
                     if ($gradeValue > 5) {
                         if ($gradeValue >= 97) $convertedGrade = 1.00;
                         elseif ($gradeValue >= 94) $convertedGrade = 1.25;
@@ -176,14 +177,20 @@ Return JSON array only in this format:
                     }
                 }
 
-                Log::info('🧩 Creating TorGrade record', [
-                    'grade' => $convertedGrade,
-                    'type' => gettype($convertedGrade),
-                ]);
+                // Apply grade-based credit logic
+                if (!is_null($convertedGrade) && $convertedGrade !== '' && $convertedGrade <= 3.00) {
+                    // keep credited info if matched earlier
+                    $rec['is_credited'] = $rec['is_credited'] ?? false;
+                } else {
+                    // grade too high or missing — clear credit info
+                    $rec['is_credited'] = false;
+                    $rec['credited_id'] = null;
+                    $rec['credited_code'] = null;
+                }
 
-                Log::info('🧩 Creating TorGrade record', [
+                Log::info('Creating TorGrade record', [
+                    'grade' => $convertedGrade,
                     'is_credited' => $rec['is_credited'],
-                    'type' => gettype($rec['is_credited']),
                 ]);
 
                 // Save to database
@@ -195,13 +202,12 @@ Return JSON array only in this format:
                     'credited_code'  => $rec['credited_code'] ?? null,
                     'is_credited'    => $rec['is_credited'] ? 1 : 0,
                     'title'          => $rec['title'] ?? '',
-                    'grade'          => $convertedGrade,
+                    'grade'          => $convertedGrade ?? 5,
                     'percent_grade'  => $percentGrade,
                     'credits'        => $rec['credits'] ?? 0,
                 ]);
 
-
-                // Update record for response
+                // update record for response
                 $rec['grade'] = $convertedGrade;
                 $rec['percent_grade'] = $percentGrade;
 
@@ -209,8 +215,9 @@ Return JSON array only in this format:
             });
 
 
+
             // ----------------------------
-            // 🧮 Step 5. Advising Logic (first_sem & second_sem)
+            // Step 5. Advising Logic (first_sem & second_sem)
             // ----------------------------
 
             // Passed subjects based on 1.00–3.00 scale
@@ -261,7 +268,7 @@ Return JSON array only in this format:
                         : null;
 
                     return [
-                        'subject_id' => $s->id, // ✅ Added this
+                        'subject_id' => $s->id, // Added this
                         'code' => $s->code,
                         'title' => $s->name,
                         'units' => $s->units,
@@ -280,15 +287,15 @@ Return JSON array only in this format:
             $firstResult = $computeEligible($firstSemAll, $passed, 27);
             $secondResult = $computeEligible($secondSemAll, $passed, 27);
 
-            // 🟢 Step 6. Update TOR status
+            //  Step 6. Update TOR status
             // $tor->update([
             //     'status' => 'submitted',
             //     'remarks' => 'OCR and advising completed successfully.'
             // ]);
 
-            Log::info("✅ TOR analysis + advising complete for ID {$torId}");
+            Log::info(" TOR analysis + advising complete for ID {$torId}");
 
-            // ✅ Notify all admins that this TOR was successfully submitted
+            //  Notify all admins that this TOR was successfully submitted
             // $user = $tor->user; // define user based on the uploaded TOR record
 
             // if ($user) {
@@ -300,16 +307,16 @@ Return JSON array only in this format:
 
             //     Log::info("📨 Notified all admins about TOR ID {$torId} from {$user->email}");
             // } else {
-            //     Log::warning("⚠️ No user found for TOR ID {$torId} — skipping admin notification");
+            //     Log::warning(" No user found for TOR ID {$torId} — skipping admin notification");
             // }
 
-            // 🧮 Step 7. Compute remaining progress
+            // Step 7. Compute remaining progress
             // $remainingProgress = $this->remainingProgressService->compute($tor, $curriculum_id);
             $remainingProgressService = new RemainingProgressService();
             // ... later:
             $remainingProgress = $remainingProgressService->compute($tor, $curriculum_id);
 
-            // 🧾 Step 7. Return Response
+            // Step 7. Return Response
             return response()->json([
                 'message' => 'TOR analyzed and advising generated successfully.',
                 'tor_id' => $tor->id,
@@ -323,7 +330,7 @@ Return JSON array only in this format:
                 'remaining_progress' => $remainingProgress
             ]);
         } catch (\Exception $e) {
-            Log::error("🔥 OCR error for TOR {$torId}: " . $e->getMessage());
+            Log::error(" OCR error for TOR {$torId}: " . $e->getMessage());
             $tor->update(['status' => 'failed', 'remarks' => $e->getMessage()]);
             return response()->json(['error' => $e->getMessage()], 500);
         }

@@ -68,7 +68,7 @@ class AdvisingController extends Controller
                     'credited_code' => $r['credited_code'] ?? null,
                     'title' => $r['title'] ?? '',
                     'credits' => $r['credits'] ?? 0,
-                    'grade' => $r['grade'] ?? '',
+                    'grade' => $r['grade'] ?? null,
                     'is_credited' => $r['is_credited'] ?? false,
                     'percent_grade' => $r['percent_grade'] ?? null,
                     'created_at' => now(),
