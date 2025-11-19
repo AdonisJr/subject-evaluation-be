@@ -81,7 +81,7 @@ class SubjectController extends Controller
     {
         try {
             $subjects = Subject::where('curriculum_id', $curriculum_id)
-                ->with(['curriculum.course', 'prerequisites'])
+                ->with(['curriculum.course', 'prerequisites.subject'])
                 ->orderBy('year_level')
                 ->orderBy('semester')
                 ->get();

@@ -22,8 +22,13 @@ class Prerequisite extends Model
         return $this->belongsTo(Subject::class, 'subject_id');
     }
 
-    public function required()
+    // public function required()
+    // {
+    //     return $this->belongsTo(Subject::class, 'prerequisite_id');
+    // }
+    // Prerequisite.php
+    public function prerequisiteSubject()
     {
-        return $this->belongsTo(Subject::class, 'prerequisite_id');
+        return $this->belongsTo(Subject::class, 'prerequisite_id', 'id');
     }
 }

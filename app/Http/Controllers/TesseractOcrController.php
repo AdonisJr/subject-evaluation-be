@@ -222,7 +222,8 @@ Return JSON array only in this format:
 
             // Passed subjects based on 1.00–3.00 scale
             $passed = TorGrade::where('user_id', $tor->user_id)
-                ->whereBetween('grade', [1.00, 3.00])
+                ->where('grade', '<=', 3.00)
+                ->whereNotNull('credited_id')  // Keep only subjects matched to curriculum
                 ->pluck('credited_id')
                 ->toArray();
 
@@ -249,8 +250,17 @@ Return JSON array only in this format:
                 foreach ($subjectsList as $subj) {
                     if (in_array($subj->id, $passedSubjects)) continue;
 
+                    // get all prerequisite ids
                     $prereqIds = $subj->prerequisites->pluck('prerequisite_id')->toArray();
-                    $allPassed = collect($prereqIds)->every(fn($id) => in_array($id, $passedSubjects));
+
+                    // check if every prerequisite is passed
+                    $allPassed = true;
+                    foreach ($prereqIds as $prereqId) {
+                        if (!in_array($prereqId, $passedSubjects)) {
+                            $allPassed = false;
+                            break;
+                        }
+                    }
 
                     if (!$allPassed) continue;
 
@@ -262,19 +272,15 @@ Return JSON array only in this format:
                 }
 
                 $subjectsArray = $eligible->map(function ($s) {
-                    $prereq = $s->prerequisites->first();
-                    $prereqSubject = $prereq && $prereq->prerequisite_id
-                        ? Subject::find($prereq->prerequisite_id)
-                        : null;
-
+                    $prereqs = $s->prerequisites->map(fn($p) => Subject::find($p->prerequisite_id)?->code)->filter();
                     return [
-                        'subject_id' => $s->id, // Added this
+                        'subject_id' => $s->id,
                         'code' => $s->code,
                         'title' => $s->name,
                         'units' => $s->units,
                         'year_level' => $s->year_level,
                         'semester' => $s->semester,
-                        'prerequisite' => $prereqSubject?->code ?? null,
+                        'prerequisite' => $prereqs->join(', '), // list all prereqs
                     ];
                 })->values();
 
@@ -283,6 +289,7 @@ Return JSON array only in this format:
                     'total_units' => $total
                 ];
             };
+
 
             $firstResult = $computeEligible($firstSemAll, $passed, 27);
             $secondResult = $computeEligible($secondSemAll, $passed, 27);
