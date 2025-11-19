@@ -23,15 +23,21 @@ class Subject extends Model
         return $this->belongsTo(Curriculum::class);
     }
 
+    // public function prerequisites()
+    // {
+    //     return $this->belongsToMany(
+    //         Subject::class,
+    //         'subject_prerequisite',
+    //         'subject_id',
+    //         'prerequisite_id'
+    //     );
+    // }
+    // Subject.php
     public function prerequisites()
     {
-        return $this->belongsToMany(
-            Subject::class,
-            'subject_prerequisite',
-            'subject_id',
-            'prerequisite_id'
-        );
+        return $this->hasMany(Prerequisite::class, 'subject_id', 'id', 'prerequisite_id');
     }
+
 
     public function advisings()
     {
